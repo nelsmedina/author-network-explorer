@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Author Network Explorer - Full View</title>
+  <script src="vis-network.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 12px 20px;
+      background: #16213e;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .logo-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.1;
+    }
+    .title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .logo-icon {
+      width: 18px;
+      height: 18px;
+      image-rendering: pixelated;
+    }
+    h1 {
+      font-size: 22px;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 2px;
+    }
+    .logo-subtitle {
+      font-size: 10px;
+      color: #888;
+      font-weight: 400;
+      letter-spacing: 0.5px;
+    }
+    .search-box {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+      max-width: 500px;
+    }
+    .search-box input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #0f0f1a;
+      color: #fff;
+      font-size: 13px;
+    }
+    .search-box input:focus {
+      outline: none;
+      border-color: #4ecca3;
+    }
+    .search-box button {
+      padding: 8px 16px;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .search-box select {
+      padding: 8px;
+      background: #0f0f1a;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .main-content {
+      flex: 1;
+      display: flex;
+      position: relative;
+      min-height: 0;
+      overflow: hidden;
+    }
+    #network {
+      flex: 1;
+      background: #0f0f1a;
+      min-height: 400px;
+      overflow: hidden;
+    }
+    .sidebar {
+      width: 300px;
+      background: #16213e;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-size: 14px;
+      margin-bottom: 12px;
+      color: #fff;
+    }
+    .author-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .author-header h2 {
+      margin-bottom: 0;
+      flex: 1;
+    }
+    .favorite-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: #666;
+      transition: all 0.2s;
+      padding: 4px;
+    }
+    .favorite-btn:hover {
+      color: #fbbf24;
+      transform: scale(1.1);
+    }
+    .favorite-btn.active {
+      color: #fbbf24;
+    }
+    .favorites-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    .favorites-section h3 {
+      font-size: 12px;
+      color: #888;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .favorites-list {
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .favorite-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .favorite-item:hover {
+      background: #1f2b4d;
+    }
+    .favorite-item .name {
+      flex: 1;
+      font-size: 12px;
+      color: #fff;
+    }
+    .favorite-item .update-badge {
+      background: #22c55e;
+      color: #fff;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+    .favorite-item .remove-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px;
+    }
+    .favorite-item .remove-btn:hover {
+      color: #ef4444;
+    }
+    .stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .stat {
+      background: #1a1a2e;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .stat.clickable {
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .stat.clickable:hover {
+      background: #2a2a4e;
+    }
+    .papers-panel {
+      display: none;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    .papers-panel.visible {
+      display: block;
+    }
+    .papers-panel h3 {
+      font-size: 13px;
+      margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .papers-panel h3 span:first-child {
+      flex: 1;
+    }
+    .papers-panel .close-btn {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .papers-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .paper-item {
+      padding: 10px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .paper-title {
+      font-size: 12px;
+      color: #4ecca3;
+      text-decoration: none;
+      display: block;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .paper-title:hover {
+      text-decoration: underline;
+    }
+    .paper-meta {
+      font-size: 10px;
+      color: #888;
+      display: flex;
+      gap: 12px;
+    }
+    .paper-title-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .paper-title-row .paper-title {
+      flex: 1;
+    }
+    .retraction-badge {
+      background: #dc2626;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 3px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .paper-item.retracted {
+      border-left: 3px solid #dc2626;
+      background: rgba(220, 38, 38, 0.1);
+    }
+    .paper-item.retracted .paper-title {
+      color: #f87171;
+    }
+    .retraction-count {
+      background: #dc2626;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 10px;
+      margin-left: 8px;
+    }
+    .retracted-panel .retracted-header {
+      background: rgba(220, 38, 38, 0.2);
+      border-radius: 6px;
+      padding: 8px;
+      margin: -8px -8px 10px -8px;
+    }
+    .retracted-panel .retracted-header span {
+      color: #f87171;
+    }
+    .retraction-info {
+      color: #f87171;
+      font-style: italic;
+    }
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #4ecca3;
+    }
+    .stat-label {
+      font-size: 10px;
+      color: #888;
+      text-transform: uppercase;
+    }
+    .retraction-stat {
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .retraction-stat:hover {
+      background: #2a2a4e;
+    }
+    .retraction-stat .stat-label {
+      margin-left: 4px;
+    }
+    .retraction-stat .stat-value {
+      color: #dc2626;
+    }
+    .retraction-stat .stat-label {
+      color: #f87171;
+    }
+    .retraction-stat.loading .stat-value {
+      color: #eab308;
+    }
+    .retraction-stat.loading .stat-label {
+      color: #fde047;
+    }
+    .retraction-stat.clean .stat-value {
+      color: #22c55e;
+    }
+    .retraction-stat.clean .stat-label {
+      color: #86efac;
+    }
+    .collab-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      justify-content: center;
+    }
+    .collab-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .collab-label {
+      font-size: 9px;
+      color: #888;
+      text-transform: uppercase;
+    }
+    .collab-value {
+      font-size: 14px;
+      font-weight: 700;
+      color: #4ecca3;
+    }
+    .cluster-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    .cluster-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .cluster-item:hover {
+      background: #1f2b4d;
+    }
+    .cluster-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .cluster-name {
+      flex: 1;
+      font-size: 13px;
+    }
+    .cluster-count {
+      font-size: 11px;
+      color: #888;
+    }
+    .cluster-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+    .search-results {
+      position: absolute;
+      top: 60px;
+      left: 20px;
+      background: #16213e;
+      border-radius: 6px;
+      max-height: 500px;
+      overflow-y: auto;
+      width: 500px;
+      z-index: 100;
+      display: none;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    .search-results.visible { display: block; }
+    .combine-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: #1a1a2e;
+      border-bottom: 1px solid #333;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .combine-count {
+      font-size: 12px;
+      color: #4ecca3;
+    }
+    .combine-btn {
+      padding: 6px 12px;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .combine-btn:hover {
+      background: #3db892;
+    }
+    .search-result {
+      padding: 10px 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid #1a1a2e;
+    }
+    .search-result:hover { background: #1f2b4d; }
+    .author-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #4ecca3;
+      flex-shrink: 0;
+    }
+    .result-name { font-weight: 500; flex: 1; }
+    .result-stats { font-size: 11px; color: #888; white-space: nowrap; }
+    .loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: #888;
+      z-index: 50;
+    }
+    .loading.visible { display: flex; }
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 4px solid #333;
+      border-top-color: #4ecca3;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .legend {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22, 33, 62, 0.9);
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: flex;
+      gap: 16px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #888;
+    }
+    .legend-color {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+    .help-text {
+      position: absolute;
+      bottom: 20px;
+      right: 320px;
+      background: rgba(22, 33, 62, 0.9);
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #888;
+    }
+    .filter-toggles {
+      position: absolute;
+      top: 20px;
+      right: 320px;
+      background: rgba(22, 33, 62, 0.95);
+      padding: 8px 12px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 10;
+    }
+    .filter-label {
+      font-size: 11px;
+      color: #888;
+    }
+    .toggle-btn {
+      padding: 5px 10px;
+      background: #1a1a2e;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .toggle-btn:hover {
+      border-color: #4ecca3;
+      color: #4ecca3;
+    }
+    .toggle-btn.active {
+      background: #4ecca3;
+      color: #1a1a2e;
+      border-color: #4ecca3;
+    }
+    /* Left Panel - Favorites & Updates */
+    .left-panel {
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 280px;
+      background: #16213e;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+      transform: translateX(-268px);
+      transition: transform 0.3s ease;
+    }
+    .left-panel.expanded {
+      transform: translateX(0);
+    }
+    .left-panel-toggle {
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 12px;
+      height: 60px;
+      background: #16213e;
+      border: none;
+      border-radius: 0 3px 3px 0;
+      color: #fff;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 8px;
+      padding: 0;
+    }
+    .left-panel-toggle:hover {
+      background: #1f2b4d;
+    }
+    .left-panel-toggle .toggle-icon {
+      font-size: 8px;
+      transition: transform 0.3s;
+    }
+    .left-panel.expanded .toggle-icon {
+      transform: rotate(180deg);
+    }
+    .left-panel-toggle .badge {
+      background: #22c55e;
+      color: #fff;
+      font-size: 7px;
+      padding: 1px 2px;
+      border-radius: 4px;
+      min-width: 10px;
+      text-align: center;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+    }
+    .left-panel-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+    }
+    .left-panel h2 {
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .left-panel h2 .icon {
+      font-size: 16px;
+    }
+    .new-papers-section {
+      margin-bottom: 20px;
+    }
+    .new-papers-section.empty {
+      display: none;
+    }
+    .new-paper-group {
+      margin-bottom: 16px;
+    }
+    .new-paper-author {
+      font-size: 12px;
+      font-weight: 600;
+      color: #4ecca3;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+    .new-paper-author:hover {
+      text-decoration: underline;
+    }
+    .new-paper-item {
+      padding: 8px 10px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      border-left: 3px solid #22c55e;
+    }
+    .new-paper-title {
+      font-size: 11px;
+      color: #fff;
+      line-height: 1.4;
+      display: block;
+      text-decoration: none;
+    }
+    .new-paper-title:hover {
+      color: #4ecca3;
+    }
+    .new-paper-meta {
+      font-size: 9px;
+      color: #888;
+      margin-top: 4px;
+    }
+    .favorites-section-left {
+      border-top: 1px solid #333;
+      padding-top: 16px;
+    }
+    .favorite-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .favorite-item-left:hover {
+      background: #1f2b4d;
+    }
+    .favorite-item-left .fav-info {
+      flex: 1;
+      min-width: 0;
+    }
+    .favorite-item-left .fav-name {
+      font-size: 13px;
+      color: #fff;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .favorite-item-left .fav-stats {
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
+    }
+    .favorite-item-left .fav-badge {
+      background: #22c55e;
+      color: #fff;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 10px;
+    }
+    .favorite-item-left .remove-fav {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .favorite-item-left:hover .remove-fav {
+      opacity: 1;
+    }
+    .favorite-item-left .remove-fav:hover {
+      color: #ef4444;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 12px;
+    }
+    .empty-state .icon {
+      font-size: 32px;
+      margin-bottom: 8px;
+      opacity: 0.5;
+    }
+    .mark-read-btn {
+      background: none;
+      border: 1px solid #333;
+      color: #888;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 10px;
+      cursor: pointer;
+      margin-left: auto;
+    }
+    .mark-read-btn:hover {
+      border-color: #4ecca3;
+      color: #4ecca3;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <div class="logo-text">
+        <div class="title-row">
+          <h1>A.N.E</h1>
+          <img src="icons/logo-bird.png" alt="ANE Logo" class="logo-icon">
+        </div>
+        <span class="logo-subtitle">Author Network Explorer</span>
+      </div>
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search author name...">
+      <button id="searchBtn">Search</button>
+      <select id="limitSelect" title="Number of results">
+        <option value="20" selected>20</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+    </div>
+  </header>
+
+  <div class="main-content">
+    <!-- Left Panel - Favorites & New Papers -->
+    <div class="left-panel" id="leftPanel">
+      <button class="left-panel-toggle" id="leftPanelToggle">
+        <span class="toggle-icon">▶</span>
+        <span class="badge" id="updatesBadge" style="display: none;">0</span>
+      </button>
+      <div class="left-panel-content">
+        <div class="new-papers-section" id="newPapersSection">
+          <h2>
+            <span class="icon">📄</span>
+            New Papers
+            <button class="mark-read-btn" id="markAllReadBtn">Mark all read</button>
+          </h2>
+          <div id="newPapersList"></div>
+        </div>
+
+        <div class="favorites-section-left" id="favoritesSectionLeft">
+          <h2><span class="icon">★</span> Favorites</h2>
+          <div id="favoritesListLeft"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="network"></div>
+    <div class="search-results" id="searchResults"></div>
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span>Building network...</span>
+    </div>
+
+    <div class="sidebar">
+      <div class="author-header">
+        <h2 id="authorName">Select an author</h2>
+        <button class="favorite-btn" id="favoriteBtn" title="Add to favorites">☆</button>
+      </div>
+      <div class="stats">
+        <div class="stat clickable" id="papersStat" title="Click to view papers">
+          <span class="stat-value" id="paperCount">-</span>
+          <span class="stat-label">Papers</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="citationCount">-</span>
+          <span class="stat-label">Citations</span>
+        </div>
+        <div class="stat clickable retraction-stat" id="retractionStat" title="Click to view papers - Retracted papers (via Retraction Watch)">
+          <span class="stat-value" id="retractionCount">-</span>
+          <span class="stat-label">Retracted</span>
+        </div>
+        <div class="stat collab-stat">
+          <div class="collab-row">
+            <span class="collab-label">Repeat Rate</span>
+            <span class="collab-value" id="repeatCollabRate">-</span>
+          </div>
+          <div class="collab-row">
+            <span class="collab-label">Avg Team</span>
+            <span class="collab-value" id="avgTeamSize">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="papers-panel" id="papersPanel">
+        <h3 class="papers-header">
+          <span>Papers</span>
+          <button class="close-btn" id="closePapersBtn">&times;</button>
+        </h3>
+        <div class="papers-list" id="papersList"></div>
+      </div>
+
+      <div class="papers-panel retracted-panel" id="retractedPanel">
+        <h3 class="papers-header retracted-header">
+          <span>Retracted Papers</span>
+          <button class="close-btn" id="closeRetractedBtn">&times;</button>
+        </h3>
+        <div class="papers-list" id="retractedList"></div>
+      </div>
+
+      <div class="cluster-section">
+        <h2>Network Clusters</h2>
+        <div id="clusterList"></div>
+      </div>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-color" style="background: #e74c3c;"></span>
+        <span>Central author</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #3498db;"></span>
+        <span>Cluster 1</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #e67e22;"></span>
+        <span>Cluster 2</span>
+      </div>
+    </div>
+
+    <div class="filter-toggles">
+      <span class="filter-label">Show:</span>
+      <button class="toggle-btn active" id="toggleSeniorFirst" title="Senior (last) + First authors only">Senior + First</button>
+      <button class="toggle-btn" id="toggleSenior" title="Senior (last) authors only">Senior Only</button>
+      <button class="toggle-btn" id="toggleFirst" title="First authors only">First Only</button>
+      <button class="toggle-btn" id="toggleAll" title="All authors (may be slow)">All Authors</button>
+      <span style="margin-left: 12px; border-left: 1px solid #333; padding-left: 12px;">
+        <button class="toggle-btn" id="pauseMotion" title="Pause/resume physics simulation">Pause Motion</button>
+      </span>
+    </div>
+
+    <div class="help-text">
+      Drag to pan | Scroll to zoom | Double-click to expand
+    </div>
+  </div>
+
+  <script src="fullpage.js"></script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Author Network Explorer</title>
+  <script src="vis-network.min.js"></script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo">
+        <div class="logo-text">
+          <div class="title-row">
+            <h1>A.N.E</h1>
+            <img src="icons/logo-bird.png" alt="ANE Logo" class="logo-icon">
+          </div>
+          <span class="logo-subtitle">Author Network Explorer</span>
+        </div>
+      </div>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search author name...">
+        <button id="searchBtn">Search</button>
+        <select id="limitSelect" title="Results">
+          <option value="20" selected>20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </header>
+
+    <div class="search-results" id="searchResults"></div>
+
+    <div class="author-toggles">
+      <span class="toggle-label">Show:</span>
+      <button class="author-toggle active" id="toggleSeniorFirst">Senior+First</button>
+      <button class="author-toggle" id="toggleAll">All Authors</button>
+      <button class="open-tab-btn" id="openTabBtn" style="margin-left: auto;">Open in Tab</button>
+    </div>
+
+    <div class="network-container">
+      <div id="network"></div>
+      <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <span>Building network...</span>
+      </div>
+      <div class="help-hint">Double-click a node to expand their network</div>
+    </div>
+
+    <div class="info-panel" id="infoPanel">
+      <div class="info-header">
+        <h3 id="authorName">Select an author</h3>
+        <button class="favorite-btn-small" id="favoriteBtn" title="Add to favorites">&#x2606;</button>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <span class="stat-value" id="paperCount">-</span>
+          <span class="stat-label">Papers</span>
+        </div>
+        <div class="stat">
+          <span class="stat-value" id="citationCount">-</span>
+          <span class="stat-label">Citations</span>
+        </div>
+        <div class="stat collab-stat">
+          <div class="collab-row">
+            <span class="collab-label">Repeat Rate</span>
+            <span class="collab-value" id="repeatCollabRate">-</span>
+          </div>
+          <div class="collab-row">
+            <span class="collab-label">Avg Team</span>
+            <span class="collab-value" id="avgTeamSize">-</span>
+          </div>
+        </div>
+      </div>
+      <a id="scholarLink" href="#" target="_blank" class="scholar-link">Search on Crossref</a>
+    </div>
+
+    <div class="legend">
+      <div class="legend-item">
+        <span class="legend-color" style="background: #e74c3c;"></span>
+        <span>Central</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #00d4ff;"></span>
+        <span>Cluster</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #9b59b6;"></span>
+        <span>Expanded</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #95a5a6;"></span>
+        <span>Extended</span>
+      </div>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+/* Author Network Explorer - Content Script Styles */
+
+.ane-icon-wrapper {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 16px !important;
+  height: 16px !important;
+  margin-left: 4px !important;
+  cursor: pointer !important;
+  opacity: 0.7 !important;
+  transition: opacity 0.15s ease, transform 0.15s ease !important;
+  vertical-align: middle !important;
+  flex-shrink: 0 !important;
+}
+
+.ane-icon-wrapper:hover {
+  opacity: 1 !important;
+  transform: scale(1.15) !important;
+}
+
+.ane-icon-wrapper img {
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  border: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Ensure icon works well in both light and dark themed sites */
+@media (prefers-color-scheme: dark) {
+  .ane-icon-wrapper {
+    opacity: 0.8 !important;
+  }
+}
+
+/* Prevent icon from breaking text flow */
+.ane-icon-wrapper {
+  position: relative !important;
+  top: -1px !important;
+}
+
+/* Handle sites that might override inline styles */
+.ane-icon-wrapper,
+.ane-icon-wrapper * {
+  box-sizing: border-box !important;
+  font-size: initial !important;
+  line-height: normal !important;
+  text-decoration: none !important;
+  background: transparent !important;
+}
