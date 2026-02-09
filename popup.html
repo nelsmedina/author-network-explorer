@@ -62,6 +62,10 @@
           <span class="stat-value" id="citationCount">-</span>
           <span class="stat-label">Citations</span>
         </div>
+        <div class="stat">
+          <span class="stat-value" id="hIndex">-</span>
+          <span class="stat-label">h-index</span>
+        </div>
         <div class="stat collab-stat">
           <div class="collab-row">
             <span class="collab-label">Repeat Rate</span>
@@ -73,7 +77,16 @@
           </div>
         </div>
       </div>
-      <a id="scholarLink" href="#" target="_blank" class="scholar-link">Search on Crossref</a>
+      <div class="citation-timeline" id="citationTimeline">
+        <div class="timeline-chart" id="timelineChart"></div>
+        <div class="timeline-labels">
+          <span id="timelineStart"></span>
+          <span id="timelineEnd"></span>
+        </div>
+        <div class="timeline-stats">
+          <span>Recent trend: <span class="timeline-stat-value" id="citationTrend">-</span></span>
+        </div>
+      </div>
     </div>
 
     <div class="legend">

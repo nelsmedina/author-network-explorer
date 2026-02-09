@@ -1,10 +1,48 @@
 // Background service worker for Author Network Explorer
-// Checks favorited authors for new papers daily using Crossref API
+// Checks favorited authors for new papers daily using OpenAlex API
 
-const CROSSREF_BASE = 'https://api.crossref.org';
-const MAILTO = 'author-network-explorer@example.com';
+const OPENALEX_BASE = 'https://api.openalex.org';
+const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
+
+// Fetch wrapper for API rate limit tracking + user notification
+const _originalFetch = fetch;
+fetch = async function(...args) {
+  const response = await _originalFetch(...args);
+  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
+  if (url && url.includes('api.openalex.org')) {
+    const remaining = response.headers.get('x-ratelimit-remaining');
+    if (remaining !== null) {
+      const rateLimitData = {
+        limit: parseInt(response.headers.get('x-ratelimit-limit')) || 0,
+        remaining: parseInt(remaining) || 0,
+        reset: response.headers.get('x-ratelimit-reset') || null,
+        lastUpdated: Date.now()
+      };
+      chrome.storage.local.set({ rateLimitData });
+      if (rateLimitData.remaining <= 0) {
+        notifyUserLimitReached(rateLimitData);
+      }
+    }
+  }
+  return response;
+};
 const ALARM_NAME = 'checkFavorites';
 const CHECK_INTERVAL_MINUTES = 60 * 24; // Once per day
+
+// Notify the user with a Chrome notification when API limit is reached
+function notifyUserLimitReached(rateLimitData) {
+  chrome.storage.local.get(['lastUserLimitNotification'], (result) => {
+    const lastNotified = result.lastUserLimitNotification || 0;
+    if (Date.now() - lastNotified < 60 * 60 * 1000) return; // Max once per hour
+    chrome.notifications.create('apiLimitReached', {
+      type: 'basic',
+      iconUrl: 'icons/ane-icon.svg',
+      title: 'Author Network Explorer',
+      message: `Daily API limit reached (${rateLimitData.limit} calls). Data will refresh ${rateLimitData.reset ? 'at ' + rateLimitData.reset : 'tomorrow'}.`
+    });
+    chrome.storage.local.set({ lastUserLimitNotification: Date.now() });
+  });
+}
 
 // Set up alarm on install
 chrome.runtime.onInstalled.addListener(() => {
@@ -16,8 +54,6 @@ chrome.runtime.onInstalled.addListener(() => {
 
   // Run migration check for old favorites format
   migrateFavoritesIfNeeded();
-
-  console.log('Author Network Explorer: Background service initialized');
 });
 
 // Also set up alarm on startup (in case extension was updated)
@@ -35,89 +71,94 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   }
 });
 
-// Migrate old favorites format (Semantic Scholar) to new format (Crossref)
+// Migrate old favorites format to OpenAlex format
 async function migrateFavoritesIfNeeded() {
   try {
-    const result = await chrome.storage.local.get(['favorites', 'favoritesMigrated']);
+    const result = await chrome.storage.local.get(['favorites', 'favoritesOpenAlexMigrated']);
 
-    if (result.favoritesMigrated) return; // Already migrated
+    if (result.favoritesOpenAlexMigrated) return; // Already migrated to OpenAlex
 
     const favorites = result.favorites || [];
     if (favorites.length === 0) {
-      await chrome.storage.local.set({ favoritesMigrated: true });
+      await chrome.storage.local.set({ favoritesOpenAlexMigrated: true });
       return;
     }
 
-    // Check if any favorites have old format (no orcid: or name: prefix)
+    // Check if any favorites need migration (don't have OpenAlex ID format)
     const needsMigration = favorites.some(fav => {
-      const id = fav.authorId;
-      return !id.startsWith('orcid:') && !id.startsWith('name:');
+      // OpenAlex author IDs start with 'A' followed by numbers
+      return !fav.authorId || !fav.authorId.startsWith('A');
     });
 
     if (needsMigration) {
-      console.log('Migrating favorites to new format...');
+      const migratedFavorites = [];
 
-      const migratedFavorites = favorites.map(fav => {
-        // Already in new format
-        if (fav.authorId.startsWith('orcid:') || fav.authorId.startsWith('name:')) {
-          return fav;
+      for (const fav of favorites) {
+        // Already in OpenAlex format
+        if (fav.authorId && fav.authorId.startsWith('A')) {
+          migratedFavorites.push(fav);
+          continue;
         }
 
-        // Migrate to new format
-        const nameParts = fav.name.split(' ');
-        const family = nameParts.pop() || fav.name;
-        const given = nameParts.join(' ');
-        const normalizedName = normalizeAuthorName(given, family);
+        // Try to find author in OpenAlex by name
+        try {
+          const searchUrl = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(fav.name)}&per_page=5`;
+          const response = await fetch(searchUrl);
 
-        return {
-          authorId: `name:${normalizedName}`,
-          name: fav.name,
-          orcid: null,
-          paperCount: fav.paperCount || 0,
-          citationCount: fav.citationCount || 0,
-          lastChecked: fav.lastChecked || Date.now(),
-          lastPaperCount: fav.lastPaperCount || fav.paperCount || 0,
-          hasUpdates: false,
-          newPapers: [],
-          searchQuery: fav.name
-        };
-      });
+          if (response.ok) {
+            const data = await response.json();
+            const results = data.results || [];
+
+            if (results.length > 0) {
+              // Find best match by paper count similarity
+              const bestMatch = results.reduce((best, current) => {
+                const bestDiff = Math.abs((best.works_count || 0) - (fav.paperCount || 0));
+                const currentDiff = Math.abs((current.works_count || 0) - (fav.paperCount || 0));
+                return currentDiff < bestDiff ? current : best;
+              });
+
+              const authorId = bestMatch.id.replace('https://openalex.org/', '');
+
+              migratedFavorites.push({
+                authorId: authorId,
+                openAlexId: bestMatch.id,
+                name: bestMatch.display_name,
+                orcid: bestMatch.orcid ? bestMatch.orcid.replace('https://orcid.org/', '') : null,
+                paperCount: bestMatch.works_count || 0,
+                citationCount: bestMatch.cited_by_count || 0,
+                hIndex: bestMatch.summary_stats?.h_index || null,
+                lastChecked: fav.lastChecked || Date.now(),
+                lastPaperCount: fav.lastPaperCount || fav.paperCount || 0,
+                hasUpdates: false,
+                newPapers: []
+              });
+              continue;
+            }
+          }
+        } catch (e) {
+          console.error('Error searching OpenAlex for', fav.name, e);
+        }
+
+        // If no match found, mark for manual resolution
+        migratedFavorites.push({
+          ...fav,
+          needsResolution: true
+        });
+      }
 
       await chrome.storage.local.set({
         favorites: migratedFavorites,
-        favoritesMigrated: true
+        favoritesOpenAlexMigrated: true
       });
-
-      console.log('Favorites migration complete');
     } else {
-      await chrome.storage.local.set({ favoritesMigrated: true });
+      await chrome.storage.local.set({ favoritesOpenAlexMigrated: true });
     }
   } catch (error) {
     console.error('Error migrating favorites:', error);
   }
 }
 
-// Normalize author name for ID generation
-function normalizeAuthorName(given, family) {
-  const normalize = (str) => {
-    if (!str) return '';
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
-
-  const normalizedFamily = normalize(family) || 'unknown';
-  const normalizedGiven = normalize(given) || '';
-
-  return normalizedGiven ? `${normalizedFamily}-${normalizedGiven}` : normalizedFamily;
-}
-
-// Check all favorites for new papers using Crossref
+// Check all favorites for new papers using OpenAlex
 async function checkFavoritesForUpdates() {
   try {
     const result = await chrome.storage.local.get(['favorites']);
@@ -125,79 +166,65 @@ async function checkFavoritesForUpdates() {
 
     if (favorites.length === 0) return;
 
-    console.log('Checking', favorites.length, 'favorites for updates...');
-
     let hasChanges = false;
     let newPapersCount = 0;
 
     for (const fav of favorites) {
       try {
-        // Use searchQuery (original name) or derive from authorId
-        const searchQuery = fav.searchQuery || fav.name;
+        // Skip favorites that need resolution
+        if (fav.needsResolution) continue;
 
-        // Search for works by this author
-        const url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&query.author=${encodeURIComponent(searchQuery)}&rows=20&sort=published&order=desc&select=DOI,title,published,is-referenced-by-count,author`;
+        // Get author details from OpenAlex
+        const authorUrl = `${OPENALEX_BASE}/authors/${fav.authorId}?api_key=${OPENALEX_API_KEY}`;
+        const authorResponse = await fetch(authorUrl);
 
-        const response = await fetch(url);
-
-        if (!response.ok) {
-          console.log('API error for', fav.name, ':', response.status);
+        if (!authorResponse.ok) {
           continue;
         }
 
-        const data = await response.json();
-        const works = data.message?.items || [];
+        const authorData = await authorResponse.json();
+        const currentPaperCount = authorData.works_count || 0;
 
-        // Count papers by this author (simple name matching)
-        const authorWorks = works.filter(work => {
-          if (!work.author) return false;
-          return work.author.some(a => {
-            const authorName = a.given && a.family ? `${a.given} ${a.family}` : (a.name || a.family || '');
-            return authorName.toLowerCase().includes(fav.name.toLowerCase().split(' ').pop());
-          });
-        });
+        if (currentPaperCount > (fav.lastPaperCount || 0)) {
+          const newCount = currentPaperCount - (fav.lastPaperCount || 0);
 
-        const paperCount = authorWorks.length;
+          // Get recent works
+          const worksUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${fav.authorId}&sort=publication_year:desc&per_page=${Math.min(newCount + 5, 25)}`;
+          const worksResponse = await fetch(worksUrl);
 
-        if (paperCount > (fav.lastPaperCount || 0)) {
-          const newCount = paperCount - (fav.lastPaperCount || 0);
-          console.log(`${fav.name}: ${newCount} new paper(s)`);
+          let newPapers = [];
+          if (worksResponse.ok) {
+            const worksData = await worksResponse.json();
+            const currentYear = new Date().getFullYear();
 
-          // Get recent papers
-          const currentYear = new Date().getFullYear();
-          const newPapers = authorWorks
-            .filter(work => {
-              if (!work.published || !work.published['date-parts']) return false;
-              const year = work.published['date-parts'][0]?.[0];
-              return year && year >= currentYear - 1;
-            })
-            .slice(0, newCount)
-            .map(work => ({
-              doi: work.DOI,
-              title: Array.isArray(work.title) ? work.title[0] : work.title,
-              year: work.published?.['date-parts']?.[0]?.[0] || null,
-              citationCount: work['is-referenced-by-count'] || 0
-            }));
+            newPapers = (worksData.results || [])
+              .filter(work => work.publication_year && work.publication_year >= currentYear - 1)
+              .slice(0, newCount)
+              .map(work => ({
+                workId: work.id.replace('https://openalex.org/', ''),
+                doi: work.doi ? work.doi.replace('https://doi.org/', '') : null,
+                title: work.display_name || work.title || 'Untitled',
+                year: work.publication_year,
+                citationCount: work.cited_by_count || 0
+              }));
+          }
 
           fav.newPapers = newPapers;
           fav.hasUpdates = true;
-          fav.lastPaperCount = paperCount;
-          fav.paperCount = paperCount;
+          fav.lastPaperCount = currentPaperCount;
+          fav.paperCount = currentPaperCount;
           newPapersCount += newCount;
           hasChanges = true;
         }
 
-        // Update citation count
-        const totalCitations = authorWorks.reduce((sum, w) => sum + (w['is-referenced-by-count'] || 0), 0);
-        if (totalCitations !== fav.citationCount) {
-          fav.citationCount = totalCitations;
-          hasChanges = true;
-        }
-
+        // Update stats
+        fav.citationCount = authorData.cited_by_count || fav.citationCount;
+        fav.hIndex = authorData.summary_stats?.h_index || fav.hIndex;
         fav.lastChecked = Date.now();
+        hasChanges = true;
 
-        // Small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Small delay to be polite to API
+        await new Promise(resolve => setTimeout(resolve, 200));
 
       } catch (error) {
         console.error('Error checking favorite:', fav.name, error);
@@ -213,8 +240,6 @@ async function checkFavoritesForUpdates() {
         chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
       }
     }
-
-    console.log('Favorites check complete');
 
   } catch (error) {
     console.error('Error in checkFavoritesForUpdates:', error);
@@ -235,29 +260,136 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Open fullpage.html with author parameter from content script
     chrome.tabs.create({ url: message.url });
     sendResponse({ success: true });
-  } else if (message.type === 'fetchCrossref') {
-    // Fetch from Crossref API (bypasses CORS issues in extension pages)
-    fetchCrossref(message.doi)
-      .then(data => sendResponse({ success: true, data }))
+  } else if (message.type === 'addPaperToCollection') {
+    // Add paper from content script to the active collection
+    addPaperFromContentScript(message.paper)
+      .then(result => sendResponse(result))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep message channel open for async response
+  } else if (message.type === 'fetchOpenAlex') {
+    // Fetch from OpenAlex API (bypasses CORS issues in extension pages)
+    fetchOpenAlex(message.endpoint)
+      .then(data => sendResponse({ success: true, data }))
+      .catch(error => sendResponse({ success: false, error: error.message }));
+    return true;
   }
   return true;
 });
 
-// Fetch retraction data from Crossref API
-async function fetchCrossref(doi) {
-  const response = await fetch(
-    `${CROSSREF_BASE}/works/${encodeURIComponent(doi)}?mailto=${MAILTO}`,
-    {
-      headers: {
-        'User-Agent': 'AuthorNetworkExplorer/1.0 (Chrome Extension)'
+// Add paper from content script to collection
+async function addPaperFromContentScript(paperInfo) {
+  try {
+    // Get collections from storage
+    const result = await chrome.storage.local.get(['paperCollections', 'activeCollectionId']);
+    let collections = result.paperCollections || [];
+    let activeCollectionId = result.activeCollectionId;
+
+    // If no active collection, create a default one
+    if (!activeCollectionId || !collections.find(c => c.id === activeCollectionId)) {
+      const defaultCollection = {
+        id: `col_${Date.now()}`,
+        name: 'Quick Collection',
+        isQuickCollection: true,
+        papers: [],
+        createdAt: Date.now()
+      };
+      collections.push(defaultCollection);
+      activeCollectionId = defaultCollection.id;
+    }
+
+    const collection = collections.find(c => c.id === activeCollectionId);
+    if (!collection) {
+      return { success: false, error: 'No collection found' };
+    }
+
+    // Search OpenAlex for full paper details
+    let fullPaper = null;
+    if (paperInfo.title) {
+      try {
+        const searchUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(paperInfo.title)}&per_page=5`;
+        const response = await fetch(searchUrl);
+
+        if (response.ok) {
+          const data = await response.json();
+          const results = data.results || [];
+
+          if (results.length > 0) {
+            // Find best match by title similarity
+            const work = results[0];
+            fullPaper = {
+              workId: work.id?.replace('https://openalex.org/', ''),
+              doi: work.doi?.replace('https://doi.org/', ''),
+              title: work.display_name || paperInfo.title,
+              year: work.publication_year,
+              citationCount: work.cited_by_count || 0,
+              authors: (work.authorships || []).slice(0, 5).map(a => ({
+                authorId: a.author?.id?.replace('https://openalex.org/', ''),
+                name: a.author?.display_name || 'Unknown'
+              })),
+              concepts: (work.concepts || []).slice(0, 5).map(c => ({
+                id: c.id,
+                name: c.display_name,
+                score: c.score
+              })),
+              references: work.referenced_works || [],
+              addedAt: Date.now()
+            };
+          }
+        }
+      } catch (e) {
+        console.error('Error searching OpenAlex:', e);
       }
     }
-  );
+
+    // If no OpenAlex match, use basic info
+    if (!fullPaper) {
+      fullPaper = {
+        workId: `manual_${Date.now()}`,
+        title: paperInfo.title,
+        link: paperInfo.link,
+        authors: [],
+        concepts: [],
+        references: [],
+        addedAt: Date.now()
+      };
+    }
+
+    // Check if paper already exists in collection
+    if (collection.papers.some(p => p.workId === fullPaper.workId || (p.title && p.title === fullPaper.title))) {
+      return { success: true, message: 'Paper already in collection' };
+    }
+
+    // Add paper to collection
+    collection.papers.push(fullPaper);
+
+    // Save back to storage
+    await chrome.storage.local.set({
+      paperCollections: collections,
+      activeCollectionId: activeCollectionId
+    });
+
+    return { success: true, message: 'Paper added to collection' };
+
+  } catch (error) {
+    console.error('Error adding paper to collection:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Fetch from OpenAlex API
+async function fetchOpenAlex(endpoint) {
+  const url = endpoint.startsWith('http') ? endpoint : `${OPENALEX_BASE}${endpoint}`;
+  const separator = url.includes('?') ? '&' : '?';
+  const fullUrl = `${url}${separator}api_key=${OPENALEX_API_KEY}`;
+
+  const response = await fetch(fullUrl, {
+    headers: {
+      'User-Agent': 'AuthorNetworkExplorer/1.0 (Chrome Extension)'
+    }
+  });
 
   if (!response.ok) {
-    throw new Error(`Crossref API error: ${response.status}`);
+    throw new Error(`OpenAlex API error: ${response.status}`);
   }
 
   return await response.json();

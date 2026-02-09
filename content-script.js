@@ -1,11 +1,12 @@
 // Author Network Explorer - Content Script
-// Injects clickable icons next to author names on academic journal websites
+// Injects clickable icons next to author names and paper titles on academic journal websites
 
 (function() {
   'use strict';
 
   // Track processed elements to avoid duplicates
   const processedElements = new WeakSet();
+  const processedPaperElements = new WeakSet();
 
   // Batch processing limit to avoid page slowdown
   const BATCH_LIMIT = 50;
@@ -14,21 +15,12 @@
   let debounceTimer = null;
   const DEBOUNCE_DELAY = 300;
 
-  // Get the icon URL from extension
+  // Get icon URLs from extension
   const iconUrl = chrome.runtime.getURL('icons/ane-icon.svg');
+  const collectionIconUrl = chrome.runtime.getURL('icons/ane-collection-icon.svg');
 
   // Site-specific configurations
   const siteConfigs = {
-    'semanticscholar.org': {
-      selectors: [
-        'a[href*="/author/"]'
-      ],
-      getAuthorName: (el) => el.textContent.trim(),
-      isValidAuthor: (el) => {
-        const href = el.getAttribute('href') || '';
-        return href.includes('/author/') && el.textContent.trim().length > 0;
-      }
-    },
     'scholar.google.com': {
       selectors: [
         '.gs_a a'
@@ -65,7 +57,6 @@
         }
 
         if (!resultItem) {
-          console.log('ANE: Could not find result container for author element');
           return null;
         }
 
@@ -78,7 +69,6 @@
         const title = titleEl ? titleEl.textContent.replace(/^\[.*?\]\s*/, '').trim() : null;
 
         if (!title) {
-          console.log('ANE: Could not find title in result container');
           return null;
         }
 
@@ -99,7 +89,6 @@
           });
         }
 
-        console.log('ANE: Extracted paper context - Title:', title, 'Authors:', allAuthors);
         return { title, allAuthors };
       }
     },
@@ -217,6 +206,123 @@
     }
   };
 
+  // Paper-specific configurations for collection icons
+  const paperConfigs = {
+    'scholar.google.com': {
+      selectors: ['.gs_rt'],  // Only select the container, not both container and link
+      getPaperInfo: (el) => {
+        const link = el.querySelector('a');
+        return {
+          title: el.textContent.replace(/^\[.*?\]\s*/, '').trim(),
+          link: link ? link.href : null
+        };
+      },
+      isValidPaper: (el) => {
+        const text = el.textContent.replace(/^\[.*?\]\s*/, '').trim();
+        // Also check we haven't already added an icon
+        return text.length > 10 && text.length < 500 && !el.querySelector('.ane-collection-icon');
+      }
+    },
+    'pubmed.ncbi.nlm.nih.gov': {
+      selectors: ['.docsum-title', 'h1.heading-title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        pmid: window.location.pathname.match(/\/(\d+)/)?.[1],
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10
+    },
+    'arxiv.org': {
+      selectors: ['h1.title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.replace(/^Title:\s*/i, '').trim(),
+        arxivId: window.location.pathname.match(/abs\/(.+)/)?.[1],
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.replace(/^Title:\s*/i, '').trim().length > 10
+    },
+    'nature.com': {
+      selectors: ['h1.c-article-title', 'h1[itemprop="headline"]', '.c-card__title a'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: el.tagName === 'A' ? el.href : window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'ieeexplore.ieee.org': {
+      selectors: ['h1.document-title', '.result-item-title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'dl.acm.org': {
+      selectors: ['h1.citation__title', '.issue-item__title a'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: el.tagName === 'A' ? el.href : window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'science.org': {
+      selectors: ['h1.article__headline', '.card-header a'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: el.tagName === 'A' ? el.href : window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'cell.com': {
+      selectors: ['h1.article-header__title', '.article-title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'elifesciences.org': {
+      selectors: ['h1.content-header__title', '.teaser__header_text a'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: el.tagName === 'A' ? el.href : window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'sciencedirect.com': {
+      selectors: ['h1.title-text', '.result-list-title-link'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: el.tagName === 'A' ? el.href : window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'pnas.org': {
+      selectors: ['h1#page-title', 'h1.highwire-cite-title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'biorxiv.org': {
+      selectors: ['h1#page-title', 'h1.highwire-cite-title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    },
+    'medrxiv.org': {
+      selectors: ['h1#page-title', 'h1.highwire-cite-title'],
+      getPaperInfo: (el) => ({
+        title: el.textContent.trim(),
+        link: window.location.href
+      }),
+      isValidPaper: (el) => el.textContent.trim().length > 10 && !el.querySelector('.ane-collection-icon')
+    }
+  };
+
   // Get current site config
   function getSiteConfig() {
     const hostname = window.location.hostname.toLowerCase();
@@ -253,13 +359,10 @@
 
       // Add paper context for cross-referencing if available
       if (paperContext && paperContext.title) {
-        console.log('ANE: Opening with paper context:', paperContext.title, 'Author:', authorName);
         fullpageUrl += '&paperTitle=' + encodeURIComponent(paperContext.title);
         if (paperContext.allAuthors && paperContext.allAuthors.length > 0) {
           fullpageUrl += '&allAuthors=' + encodeURIComponent(paperContext.allAuthors.join('|'));
         }
-      } else {
-        console.log('ANE: Opening without paper context for:', authorName);
       }
 
       // Send message to background script to open new tab
@@ -274,6 +377,135 @@
     });
 
     return wrapper;
+  }
+
+  // Create a collection icon element for papers
+  function createCollectionIcon(paperInfo) {
+    const icon = document.createElement('img');
+    icon.src = collectionIconUrl;
+    icon.className = 'ane-collection-icon';
+    icon.title = 'Add to collection';
+    icon.style.cssText = `
+      width: 16px;
+      height: 16px;
+      vertical-align: middle;
+      margin-left: 6px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s, transform 0.2s;
+      display: inline-block;
+    `;
+
+    icon.addEventListener('mouseenter', () => {
+      icon.style.opacity = '1';
+      icon.style.transform = 'scale(1.15)';
+    });
+
+    icon.addEventListener('mouseleave', () => {
+      icon.style.opacity = '0.7';
+      icon.style.transform = 'scale(1)';
+    });
+
+    icon.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Disable further clicks
+      icon.style.pointerEvents = 'none';
+
+      // Send paper info to background script
+      chrome.runtime.sendMessage({
+        type: 'addPaperToCollection',
+        paper: paperInfo
+      }, (response) => {
+        if (response && response.success) {
+          // Bounce up animation
+          icon.style.transition = 'transform 0.15s ease-out, opacity 0.3s ease-out';
+          icon.style.transform = 'translateY(-8px) scale(1.3)';
+          icon.style.opacity = '1';
+
+          // Bounce down and fade out
+          setTimeout(() => {
+            icon.style.transition = 'transform 0.15s ease-in, opacity 0.2s ease-out';
+            icon.style.transform = 'translateY(-4px) scale(1.1)';
+          }, 150);
+
+          // Final bounce and disappear
+          setTimeout(() => {
+            icon.style.transition = 'transform 0.2s ease-out, opacity 0.3s ease-out';
+            icon.style.transform = 'translateY(-12px) scale(0.5)';
+            icon.style.opacity = '0';
+          }, 300);
+
+          // Remove from DOM
+          setTimeout(() => {
+            icon.remove();
+          }, 600);
+        } else {
+          // Re-enable if failed
+          icon.style.pointerEvents = 'auto';
+        }
+      });
+    });
+
+    return icon;
+  }
+
+  // Get paper config for current site
+  function getPaperConfig() {
+    const hostname = window.location.hostname.toLowerCase();
+
+    for (const [domain, config] of Object.entries(paperConfigs)) {
+      if (hostname.includes(domain.toLowerCase())) {
+        return config;
+      }
+    }
+
+    return null;
+  }
+
+  // Inject collection icons next to paper titles
+  function processPaperElements() {
+    const config = getPaperConfig();
+    if (!config) return;
+
+    let processed = 0;
+
+    for (const selector of config.selectors) {
+      const elements = document.querySelectorAll(selector);
+
+      for (const el of elements) {
+        if (processed >= BATCH_LIMIT) break;
+        if (processedPaperElements.has(el)) continue;
+
+        if (!config.isValidPaper(el)) {
+          processedPaperElements.add(el);
+          continue;
+        }
+
+        const paperInfo = config.getPaperInfo(el);
+        if (!paperInfo.title) {
+          processedPaperElements.add(el);
+          continue;
+        }
+
+        try {
+          const icon = createCollectionIcon(paperInfo);
+
+          // Find the best place to insert the icon
+          if (el.tagName === 'A') {
+            el.parentNode.insertBefore(icon, el.nextSibling);
+          } else {
+            el.appendChild(icon);
+          }
+
+          processedPaperElements.add(el);
+          processed++;
+        } catch (e) {
+          console.error('ANE: Error adding collection icon:', e);
+        }
+      }
+    }
   }
 
   // Process author elements and inject icons
@@ -337,6 +569,8 @@
       if (config) {
         processAuthorElements(config);
       }
+      // Also process papers for collection icons
+      processPaperElements();
     }, DEBOUNCE_DELAY);
   }
 
@@ -372,16 +606,21 @@
   // Initialize
   function init() {
     const config = getSiteConfig();
+    const paperConfig = getPaperConfig();
 
-    if (!config) {
-      console.log('Author Network Explorer: No config for this site');
+    if (!config && !paperConfig) {
       return;
     }
 
-    console.log('Author Network Explorer: Initializing on', window.location.hostname);
+    // Initial processing for authors
+    if (config) {
+      processAuthorElements(config);
+    }
 
-    // Initial processing
-    processAuthorElements(config);
+    // Initial processing for papers (collection icons)
+    if (paperConfig) {
+      processPaperElements();
+    }
 
     // Set up observer for dynamic content
     setupObserver();

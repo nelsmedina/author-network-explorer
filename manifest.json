@@ -2,10 +2,10 @@
   "manifest_version": 3,
   "name": "Author Network Explorer",
   "version": "1.0",
-  "description": "Visualize scientific author collaboration networks using Crossref data",
-  "permissions": ["storage", "tabs", "alarms"],
+  "description": "Visualize scientific author collaboration networks using OpenAlex data",
+  "permissions": ["storage", "tabs", "alarms", "notifications"],
   "host_permissions": [
-    "https://api.crossref.org/*",
+    "https://api.openalex.org/*",
     "https://scholar.google.com/*",
     "https://pubmed.ncbi.nlm.nih.gov/*",
     "https://arxiv.org/*",
@@ -20,9 +20,20 @@
     "https://www.medrxiv.org/*",
     "https://elifesciences.org/*"
   ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Author Network Explorer"
+    "default_title": "Author Network Explorer",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png"
+    }
   },
   "background": {
     "service_worker": "background.js"
@@ -48,7 +59,7 @@
     "run_at": "document_idle"
   }],
   "web_accessible_resources": [{
-    "resources": ["icons/ane-icon.svg"],
+    "resources": ["icons/ane-icon.svg", "icons/ane-collection-icon.svg"],
     "matches": [
       "https://scholar.google.com/*",
       "https://pubmed.ncbi.nlm.nih.gov/*",

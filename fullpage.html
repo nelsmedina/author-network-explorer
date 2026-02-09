@@ -94,6 +94,164 @@
       font-size: 12px;
       cursor: pointer;
     }
+    /* Path Finder UI */
+    .path-finder-box {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex: 1;
+      max-width: 700px;
+    }
+    .path-finder-box input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #0f0f1a;
+      color: #fff;
+      font-size: 13px;
+    }
+    .path-finder-box input:focus {
+      outline: none;
+      border-color: #4ecca3;
+    }
+    .path-arrow {
+      color: #4ecca3;
+      font-size: 18px;
+      font-weight: bold;
+    }
+    .path-finder-box select {
+      padding: 8px;
+      background: #0f0f1a;
+      color: #fff;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .path-finder-box button {
+      padding: 8px 16px;
+      background: #8b5cf6;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .path-finder-box button:hover {
+      background: #7c3aed;
+    }
+    .mode-toggle {
+      display: flex;
+      gap: 4px;
+      margin-left: 12px;
+    }
+    .mode-btn {
+      padding: 8px 12px;
+      background: #1a1a2e;
+      color: #888;
+      border: 1px solid #333;
+      border-radius: 6px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .mode-btn:hover {
+      border-color: #4ecca3;
+      color: #fff;
+    }
+    .mode-btn.active {
+      background: #4ecca3;
+      color: #1a1a2e;
+      border-color: #4ecca3;
+    }
+    /* Path finder search results dropdown */
+    .path-search-dropdown {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #16213e;
+      border-radius: 0 0 6px 6px;
+      max-height: 200px;
+      overflow-y: auto;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+      display: none;
+    }
+    .path-search-dropdown.visible {
+      display: block;
+    }
+    .path-search-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      border-bottom: 1px solid #1a1a2e;
+    }
+    .path-search-item:hover {
+      background: #1f2b4d;
+    }
+    .path-search-item:last-child {
+      border-bottom: none;
+    }
+    .path-search-name {
+      font-size: 12px;
+      color: #fff;
+    }
+    .path-search-stats {
+      font-size: 10px;
+      color: #888;
+    }
+    /* Path input container for dropdown positioning */
+    .path-input-container {
+      position: relative;
+      flex: 1;
+    }
+    .path-input-container input {
+      width: 100%;
+    }
+    /* Path finding loading state */
+    .path-loading {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: #888;
+      z-index: 50;
+      background: rgba(15, 15, 26, 0.9);
+      padding: 30px 40px;
+      border-radius: 12px;
+    }
+    .path-loading.visible {
+      display: flex;
+    }
+    .path-loading-text {
+      font-size: 14px;
+      color: #fff;
+    }
+    .path-loading-subtext {
+      font-size: 11px;
+      color: #888;
+    }
+    /* Path result legend */
+    .path-legend {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(22, 33, 62, 0.9);
+      padding: 10px 20px;
+      border-radius: 8px;
+      display: none;
+      gap: 16px;
+    }
+    .path-legend.visible {
+      display: flex;
+    }
     .main-content {
       flex: 1;
       display: flex;
@@ -270,6 +428,21 @@
       display: flex;
       gap: 12px;
     }
+    .paper-collect-btn {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s, transform 0.2s;
+      flex-shrink: 0;
+    }
+    .paper-item:hover .paper-collect-btn {
+      opacity: 0.7;
+    }
+    .paper-collect-btn:hover {
+      opacity: 1 !important;
+      transform: scale(1.15);
+    }
     .paper-title-row {
       display: flex;
       align-items: flex-start;
@@ -415,6 +588,79 @@
       gap: 8px;
       width: 100%;
     }
+    .cluster-topics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 6px;
+      padding-left: 20px;
+    }
+    .cluster-topic-tag {
+      font-size: 9px;
+      color: #888;
+      background: rgba(255,255,255,0.05);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .cluster-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 180px;
+    }
+    .obscure-papers-section {
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid #333;
+    }
+    .obscure-papers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .obscure-paper-item {
+      background: rgba(139, 92, 246, 0.1);
+      border-left: 3px solid #8b5cf6;
+      padding: 8px 10px;
+      border-radius: 4px;
+    }
+    .obscure-paper-title {
+      font-size: 11px;
+      color: #a78bfa;
+      text-decoration: none;
+      display: block;
+      line-height: 1.4;
+      margin-bottom: 4px;
+    }
+    .obscure-paper-title:hover {
+      color: #c4b5fd;
+      text-decoration: underline;
+    }
+    .obscure-paper-meta {
+      font-size: 9px;
+      color: #888;
+      margin-bottom: 4px;
+      display: flex;
+      gap: 6px;
+    }
+    .obscure-author {
+      color: #9ca3af;
+    }
+    .obscure-year {
+      color: #6b7280;
+    }
+    .obscure-paper-concepts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .concept-tag {
+      font-size: 9px;
+      color: #888;
+      background: rgba(255,255,255,0.05);
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
     .search-results {
       position: absolute;
       top: 60px;
@@ -497,6 +743,24 @@
       animation: spin 1s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    /* Network placeholder */
+    .network-placeholder {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      text-align: center;
+      pointer-events: none;
+    }
+    /* Search bar intro glow */
+    @keyframes searchGlow {
+      0%, 100% { box-shadow: 0 0 4px rgba(78, 204, 163, 0); border-color: #333; }
+      50% { box-shadow: 0 0 12px rgba(78, 204, 163, 0.4); border-color: #4ecca3; }
+    }
+    .search-glow input {
+      animation: searchGlow 1.5s ease-in-out 2;
+    }
     .legend {
       position: absolute;
       bottom: 20px;
@@ -763,6 +1027,806 @@
       border-color: #4ecca3;
       color: #4ecca3;
     }
+    /* Collections */
+    .collections-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    .collections-section h2 {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .export-btn, .export-collection-btn {
+      background: none;
+      border: 1px solid #444;
+      color: #888;
+      width: 22px;
+      height: 22px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      vertical-align: middle;
+      margin-left: 6px;
+      margin-right: 16px;
+      padding: 0;
+    }
+    .export-btn:hover, .export-collection-btn:hover {
+      border-color: #4ecca3;
+      color: #4ecca3;
+    }
+    .new-collection-btn {
+      margin-left: auto;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .new-collection-btn:hover {
+      background: #3db892;
+    }
+    .paper-search-box {
+      display: flex;
+      gap: 6px;
+      margin: 10px 0;
+    }
+    .paper-search-box input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: #0f0f1a;
+      color: #fff;
+      font-size: 11px;
+    }
+    .paper-search-box input:focus {
+      outline: none;
+      border-color: #4ecca3;
+    }
+    .paper-search-box button {
+      padding: 6px 10px;
+      background: #333;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .paper-search-box button:hover {
+      background: #444;
+    }
+    .paper-search-results {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-bottom: 10px;
+      display: none;
+    }
+    .paper-search-results.visible {
+      display: block;
+    }
+    .paper-search-item {
+      padding: 8px;
+      background: #1a1a2e;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      position: relative;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .paper-search-item:hover:not(.in-collection) {
+      background: #242444;
+    }
+    .paper-search-item.in-collection {
+      opacity: 0.6;
+      cursor: default;
+    }
+    .paper-search-title {
+      font-size: 11px;
+      color: #fff;
+      line-height: 1.4;
+      margin-bottom: 4px;
+      padding-right: 50px;
+    }
+    .paper-search-meta {
+      font-size: 9px;
+      color: #888;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .add-to-collection-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 3px 8px;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .add-to-collection-btn:hover:not(:disabled) {
+      background: #3db892;
+    }
+    .add-to-collection-btn:disabled {
+      background: #333;
+      color: #888;
+      cursor: default;
+    }
+    .paper-search-loading, .paper-search-empty, .paper-search-error {
+      padding: 12px;
+      text-align: center;
+      color: #888;
+      font-size: 11px;
+    }
+    .collections-list {
+      margin-bottom: 12px;
+    }
+    .collections-empty {
+      text-align: center;
+      padding: 16px;
+      color: #666;
+      font-size: 11px;
+    }
+    .collection-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 10px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+    }
+    .collection-item:hover {
+      background: #1f2b4d;
+    }
+    .collection-item.active {
+      border-color: #4ecca3;
+      background: rgba(78, 204, 163, 0.1);
+    }
+    .collection-item.drag-over .collection-info,
+    .collection-item.drag-over .collection-name,
+    .collection-item.drag-over .collection-count,
+    .collection-item.drag-over .delete-collection-btn {
+      pointer-events: none;
+    }
+    .collection-item.drag-over .delete-collection-btn {
+      opacity: 0;
+    }
+    .collection-info {
+      flex: 1;
+    }
+    .collection-name {
+      font-size: 12px;
+      color: #fff;
+      font-weight: 500;
+    }
+    .collection-count {
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
+    }
+    .delete-collection-btn {
+      background: none;
+      border: none;
+      color: #666;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 6px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .collection-item:hover .delete-collection-btn {
+      opacity: 1;
+    }
+    .delete-collection-btn:hover {
+      color: #ef4444;
+    }
+    .collection-view {
+      background: #0f0f1a;
+      border-radius: 6px;
+      padding: 12px;
+      margin-top: 10px;
+    }
+    .collection-view-empty {
+      text-align: center;
+      color: #666;
+      font-size: 11px;
+      padding: 16px;
+    }
+    .collection-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .collection-header h3 {
+      font-size: 13px;
+      color: #fff;
+    }
+    .discover-btn {
+      padding: 5px 10px;
+      background: #8b5cf6;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .discover-btn:hover {
+      background: #7c3aed;
+    }
+    .collection-papers {
+      max-height: 150px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+    }
+    .collection-papers-empty {
+      text-align: center;
+      color: #666;
+      font-size: 10px;
+      padding: 12px;
+    }
+    .collection-paper-item {
+      display: flex;
+      align-items: center;
+      padding: 6px 8px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 4px;
+      margin-bottom: 4px;
+    }
+    .collection-paper-title {
+      flex: 1;
+      font-size: 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .collection-paper-title a {
+      color: #4ecca3;
+      text-decoration: none;
+    }
+    .collection-paper-title a:hover {
+      text-decoration: underline;
+    }
+    .collection-paper-meta {
+      font-size: 9px;
+      color: #666;
+      margin-left: 8px;
+      white-space: nowrap;
+    }
+    .remove-paper-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 4px;
+      margin-left: 4px;
+      opacity: 0;
+    }
+    .collection-paper-item:hover .remove-paper-btn {
+      opacity: 1;
+    }
+    .remove-paper-btn:hover {
+      color: #ef4444;
+    }
+    .discovery-section h4 {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 8px;
+      border-top: 1px solid #333;
+      padding-top: 10px;
+    }
+    .discovery-suggestions {
+      max-height: 250px;
+      overflow-y: auto;
+    }
+    .discovery-hint, .discovery-loading, .discovery-empty, .discovery-error {
+      text-align: center;
+      color: #666;
+      font-size: 10px;
+      padding: 12px;
+    }
+    .suggestion-item {
+      padding: 10px;
+      background: rgba(139, 92, 246, 0.1);
+      border-left: 3px solid #8b5cf6;
+      border-radius: 4px;
+      margin-bottom: 8px;
+    }
+    .suggestion-item.added {
+      opacity: 0.5;
+    }
+    .suggestion-connection {
+      margin-bottom: 4px;
+    }
+    .connection-badge {
+      background: #8b5cf6;
+      color: #fff;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+    .suggestion-title {
+      font-size: 11px;
+      margin-bottom: 4px;
+    }
+    .suggestion-title a {
+      color: #a78bfa;
+      text-decoration: none;
+    }
+    .suggestion-title a:hover {
+      text-decoration: underline;
+    }
+    .suggestion-meta {
+      font-size: 9px;
+      color: #888;
+      margin-bottom: 6px;
+    }
+    .suggestion-concepts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 8px;
+    }
+    .add-suggestion-btn {
+      padding: 4px 10px;
+      background: rgba(139, 92, 246, 0.3);
+      color: #a78bfa;
+      border: 1px solid #8b5cf6;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .add-suggestion-btn:hover:not(:disabled) {
+      background: rgba(139, 92, 246, 0.5);
+    }
+    .add-suggestion-btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+    /* Tab Bar */
+    .tab-bar {
+      display: flex;
+      gap: 4px;
+      padding: 8px 20px;
+      background: #0f0f1a;
+      border-bottom: 1px solid #333;
+    }
+    .tab-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      color: #888;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #1a1a2e;
+      color: #fff;
+    }
+    .tab-btn.active {
+      background: #16213e;
+      border-color: #4ecca3;
+      color: #4ecca3;
+    }
+    .tab-icon {
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .tab-icon-img {
+      width: 14px;
+      height: 14px;
+    }
+    /* Viewport containers */
+    .viewport {
+      display: none;
+      flex: 1;
+      position: relative;
+      min-height: 0;
+    }
+    .viewport.active {
+      display: flex;
+    }
+    /* Authors viewport uses existing network + sidebar layout */
+    #authorsViewport {
+      flex-direction: row;
+    }
+    #authorsViewport #network {
+      flex: 1;
+    }
+    /* Collections viewport */
+    #collectionsViewport {
+      flex-direction: row;
+    }
+    #collectionsViewport .collections-network {
+      flex: 1;
+      background: #0f0f1a;
+      position: relative;
+    }
+    #collectionsViewport .collections-sidebar {
+      width: 300px;
+      background: #16213e;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    /* Fields viewport */
+    #fieldsViewport {
+      flex-direction: row;
+    }
+    #fieldsViewport .fields-canvas {
+      flex: 1;
+      background: #0f0f1a;
+      position: relative;
+    }
+    #fieldsViewport .fields-sidebar {
+      width: 320px;
+      background: #16213e;
+      padding: 16px;
+      overflow-y: auto;
+    }
+    .fields-search-box {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .fields-search-box input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #333;
+      border-radius: 6px;
+      background: #0f0f1a;
+      color: #fff;
+      font-size: 13px;
+    }
+    .fields-search-box input:focus {
+      outline: none;
+      border-color: #4ecca3;
+    }
+    .fields-search-box button {
+      padding: 8px 14px;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .field-metrics {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .field-metric {
+      background: #1a1a2e;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .field-metric-value {
+      font-size: 20px;
+      font-weight: 700;
+      color: #4ecca3;
+    }
+    .field-metric-label {
+      font-size: 10px;
+      color: #888;
+      text-transform: uppercase;
+    }
+    .forgotten-corners-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    .forgotten-corners-section h3 {
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .hipster-btn {
+      margin-left: auto;
+      padding: 6px 12px;
+      background: #8b5cf6;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .hipster-btn:hover {
+      background: #7c3aed;
+    }
+    .corners-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .corner-item {
+      padding: 12px;
+      background: rgba(139, 92, 246, 0.1);
+      border-left: 3px solid #8b5cf6;
+      border-radius: 4px;
+      margin-bottom: 10px;
+    }
+    .corner-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+    .corner-name {
+      font-size: 13px;
+      font-weight: 500;
+      color: #a78bfa;
+    }
+    .hipster-badge {
+      background: #8b5cf6;
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+    .corner-metrics {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 8px;
+      display: flex;
+      gap: 12px;
+    }
+    .corner-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .corner-actions button {
+      padding: 4px 10px;
+      background: rgba(139, 92, 246, 0.3);
+      color: #a78bfa;
+      border: 1px solid #8b5cf6;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+    .corner-actions button:hover {
+      background: rgba(139, 92, 246, 0.5);
+    }
+    /* Scoped Search */
+    .scoped-search-section {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #333;
+    }
+    .scope-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      background: rgba(78, 204, 163, 0.1);
+      border-radius: 6px;
+      border: 1px solid #4ecca3;
+    }
+    .scope-label {
+      font-size: 10px;
+      color: #888;
+    }
+    .scope-name {
+      font-size: 12px;
+      color: #4ecca3;
+      font-weight: 500;
+      flex: 1;
+    }
+    .clear-scope-btn {
+      background: none;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 2px 6px;
+    }
+    .clear-scope-btn:hover {
+      color: #fff;
+    }
+    .scoped-search-box {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+    .scoped-search-box input {
+      flex: 1;
+      padding: 8px 10px;
+      border: 1px solid #333;
+      border-radius: 4px;
+      background: #0f0f1a;
+      color: #fff;
+      font-size: 12px;
+    }
+    .scoped-search-box input:focus {
+      outline: none;
+      border-color: #4ecca3;
+    }
+    .scoped-search-box button {
+      padding: 8px 12px;
+      background: #4ecca3;
+      color: #1a1a2e;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .scoped-results {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .scoped-result-item {
+      padding: 10px;
+      background: #1a1a2e;
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    .scoped-result-item:hover {
+      background: #1f2b4d;
+    }
+    .scoped-result-title {
+      font-size: 12px;
+      color: #4ecca3;
+      margin-bottom: 4px;
+    }
+    .scoped-result-meta {
+      font-size: 10px;
+      color: #888;
+    }
+    /* Collections network legend */
+    .collections-legend {
+      position: absolute;
+      top: 48px;
+      left: 12px;
+      background: rgba(22, 33, 62, 0.92);
+      padding: 10px 14px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      z-index: 10;
+      pointer-events: none;
+      transition: left 0.3s ease;
+    }
+    .collections-legend .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #888;
+    }
+    /* Collections subtabs */
+    .collections-subtabs {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      gap: 4px;
+      z-index: 20;
+      transition: left 0.3s ease;
+    }
+    .collections-subtab-btn {
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      border: 1px solid #333;
+      transition: all 0.2s;
+      background: #1a1a2e;
+      color: #888;
+    }
+    /* Quick Collection */
+    .quick-collection-section { margin-bottom: 12px; }
+    .quick-collection-header {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px; color: #4ecca3; margin-bottom: 8px;
+    }
+    .quick-paper-item {
+      display: flex; align-items: center; padding: 6px 8px;
+      background: rgba(78, 204, 163, 0.08); border-radius: 4px;
+      margin-bottom: 4px; cursor: grab; border-left: 3px solid #4ecca3;
+    }
+    .quick-paper-item:active { cursor: grabbing; }
+    .quick-paper-item .paper-title { flex: 1; font-size: 10px; color: #fff;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .quick-paper-item .remove-btn {
+      background: none; border: none; color: #666; cursor: pointer; font-size: 14px;
+    }
+    .quick-paper-item .remove-btn:hover { color: #ef4444; }
+    .quick-collection-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .quick-collection-actions button {
+      flex: 1; padding: 6px 8px; border-radius: 4px; font-size: 10px; cursor: pointer;
+    }
+    .convert-collection-btn {
+      background: #4ecca3; color: #1a1a2e; border: none; font-weight: 600;
+    }
+    .convert-collection-btn:hover { background: #3db892; }
+    .clear-collection-btn {
+      background: transparent; color: #888; border: 1px solid #444;
+    }
+    .clear-collection-btn:hover { border-color: #888; color: #fff; }
+    .collection-item.drag-over {
+      border-color: #8b5cf6 !important;
+      background: rgba(139, 92, 246, 0.12) !important;
+      position: relative;
+    }
+    .collection-item.drag-over::after {
+      content: '+';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #fff;
+      font-size: 16px;
+      font-weight: 300;
+      line-height: 1;
+      pointer-events: none;
+    }
+    /* Paper network in collections */
+    .paper-node {
+      cursor: pointer;
+    }
+    .paper-detail-panel {
+      padding: 16px;
+      background: #1a1a2e;
+      border-radius: 8px;
+      margin-bottom: 12px;
+    }
+    .paper-detail-title {
+      font-size: 14px;
+      color: #4ecca3;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+    .paper-detail-title a {
+      color: #4ecca3;
+      text-decoration: none;
+    }
+    .paper-detail-title a:hover {
+      text-decoration: underline;
+    }
+    .paper-detail-meta {
+      font-size: 11px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .paper-detail-authors {
+      font-size: 11px;
+      color: #aaa;
+      margin-bottom: 8px;
+    }
+    .paper-detail-concepts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
   </style>
 </head>
 <body>
@@ -776,7 +1840,7 @@
         <span class="logo-subtitle">Author Network Explorer</span>
       </div>
     </div>
-    <div class="search-box">
+    <div class="search-box" id="singleSearchBox">
       <input type="text" id="searchInput" placeholder="Search author name...">
       <button id="searchBtn">Search</button>
       <select id="limitSelect" title="Number of results">
@@ -785,10 +1849,41 @@
         <option value="100">100</option>
       </select>
     </div>
+    <div class="path-finder-box" id="pathFinderBox" style="display: none;">
+      <input type="text" id="pathAuthor1Input" placeholder="Author 1 name...">
+      <span class="path-arrow">→</span>
+      <input type="text" id="pathAuthor2Input" placeholder="Author 2 name...">
+      <select id="nameMatchSelect" title="Author position filter">
+        <option value="full" selected>First + Last authors</option>
+        <option value="first">First authors only</option>
+        <option value="last">Last/Senior only</option>
+        <option value="all">All authors</option>
+      </select>
+      <button id="findPathBtn">Find Path</button>
+    </div>
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="singleModeBtn" title="Single author network">Single</button>
+      <button class="mode-btn" id="pathModeBtn" title="Find path between two authors">Path Finder</button>
+    </div>
   </header>
 
+  <div class="tab-bar">
+    <button class="tab-btn active" id="authorsTab" data-tab="authors">
+      <span class="tab-icon"><img src="icons/ane-icon.svg" class="tab-icon-img"></span>
+      <span class="tab-label">Authors</span>
+    </button>
+    <button class="tab-btn" id="collectionsTab" data-tab="collections">
+      <span class="tab-icon"><img src="icons/ane-collection-icon.svg" class="tab-icon-img"></span>
+      <span class="tab-label">Collections</span>
+    </button>
+    <button class="tab-btn" id="fieldsTab" data-tab="fields">
+      <span class="tab-icon">!</span>
+      <span class="tab-label">Fields</span>
+    </button>
+  </div>
+
   <div class="main-content">
-    <!-- Left Panel - Favorites & New Papers -->
+    <!-- Left Panel - Favorites & New Papers (shared across Authors + Collections tabs) -->
     <div class="left-panel" id="leftPanel">
       <button class="left-panel-toggle" id="leftPanelToggle">
         <span class="toggle-icon">▶</span>
@@ -797,7 +1892,7 @@
       <div class="left-panel-content">
         <div class="new-papers-section" id="newPapersSection">
           <h2>
-            <span class="icon">📄</span>
+            <span class="icon"><img src="icons/ane-icon.svg" style="width:14px;height:14px;vertical-align:middle;"></span>
             New Papers
             <button class="mark-read-btn" id="markAllReadBtn">Mark all read</button>
           </h2>
@@ -805,17 +1900,43 @@
         </div>
 
         <div class="favorites-section-left" id="favoritesSectionLeft">
-          <h2><span class="icon">★</span> Favorites</h2>
+          <h2><span class="icon">★</span> Favorites <button class="export-btn" id="exportFavoritesBtn" title="Export as CSV">&#x2B07;</button></h2>
           <div id="favoritesListLeft"></div>
+        </div>
+
+        <div class="collections-section" id="collectionsSection">
+          <h2>
+            <span class="icon"><img src="icons/ane-collection-icon.svg" style="width:14px;height:14px;vertical-align:middle;"></span>
+            Collections
+            <button class="export-btn" id="exportAllCollectionsBtn" title="Export all collections as CSV">&#x2B07;</button>
+            <button class="new-collection-btn" id="newCollectionBtn" title="New collection">+</button>
+          </h2>
+          <div class="paper-search-box">
+            <input type="text" id="paperSearchInput" placeholder="Search papers to add...">
+            <button id="paperSearchBtn">Search</button>
+          </div>
+          <div id="paperSearchResults" class="paper-search-results"></div>
+          <div id="collectionsList" class="collections-list"></div>
+          <div id="collectionView" class="collection-view"></div>
         </div>
       </div>
     </div>
 
+    <!-- Authors Viewport (existing functionality) -->
+    <div class="viewport active" id="authorsViewport">
     <div id="network"></div>
+    <div class="network-placeholder" id="networkPlaceholder">
+      <div style="font-size: 15px; color: #666; letter-spacing: 0.5px;">Find an author to explore</div>
+    </div>
     <div class="search-results" id="searchResults"></div>
     <div class="loading" id="loading">
       <div class="spinner"></div>
       <span>Building network...</span>
+    </div>
+    <div class="path-loading" id="pathLoading">
+      <div class="spinner"></div>
+      <span class="path-loading-text" id="pathLoadingText">Finding path...</span>
+      <span class="path-loading-subtext" id="pathLoadingSubtext">Exploring author connections</span>
     </div>
 
     <div class="sidebar">
@@ -832,7 +1953,11 @@
           <span class="stat-value" id="citationCount">-</span>
           <span class="stat-label">Citations</span>
         </div>
-        <div class="stat clickable retraction-stat" id="retractionStat" title="Click to view papers - Retracted papers (via Retraction Watch)">
+        <div class="stat">
+          <span class="stat-value" id="hIndex">-</span>
+          <span class="stat-label">h-index</span>
+        </div>
+        <div class="stat clickable retraction-stat" id="retractionStat" title="Click to view retracted papers (via OpenAlex)">
           <span class="stat-value" id="retractionCount">-</span>
           <span class="stat-label">Retracted</span>
         </div>
@@ -847,6 +1972,20 @@
           </div>
         </div>
       </div>
+
+      <div class="citation-timeline" id="citationTimeline">
+        <h3 style="font-size: 12px; margin-bottom: 8px; color: #888;">Citation Velocity</h3>
+        <div class="timeline-chart" id="timelineChart"></div>
+        <div class="timeline-labels">
+          <span id="timelineStart"></span>
+          <span id="timelineEnd"></span>
+        </div>
+        <div class="timeline-stats">
+          <span>Recent trend: <span class="timeline-stat-value" id="citationTrend">-</span></span>
+        </div>
+      </div>
+
+      <div class="obscure-papers-section" id="obscurePapers" style="display: none;"></div>
 
       <div class="papers-panel" id="papersPanel">
         <h3 class="papers-header">
@@ -870,7 +2009,7 @@
       </div>
     </div>
 
-    <div class="legend">
+    <div class="legend" id="normalLegend">
       <div class="legend-item">
         <span class="legend-color" style="background: #e74c3c;"></span>
         <span>Central author</span>
@@ -882,6 +2021,24 @@
       <div class="legend-item">
         <span class="legend-color" style="background: #e67e22;"></span>
         <span>Cluster 2</span>
+      </div>
+    </div>
+    <div class="path-legend" id="pathLegend">
+      <div class="legend-item">
+        <span class="legend-color" style="background: #22c55e;"></span>
+        <span>Start author</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #ef4444;"></span>
+        <span>End author</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #8b5cf6;"></span>
+        <span>Path authors</span>
+      </div>
+      <div class="legend-item">
+        <span style="color: #fbbf24; font-weight: bold;">━━</span>
+        <span>Connection path</span>
       </div>
     </div>
 
@@ -899,8 +2056,116 @@
     <div class="help-text">
       Drag to pan | Scroll to zoom | Double-click to expand
     </div>
+    </div><!-- End Authors Viewport -->
+
+    <!-- Collections Viewport -->
+    <div class="viewport" id="collectionsViewport">
+      <div class="collections-network" id="collectionsNetwork">
+        <div id="collectionPaperNetworkContainer" style="width:100%;height:100%;"></div>
+        <div id="collectionAuthorNetworkContainer" style="width:100%;height:100%;display:none;position:absolute;top:0;left:0;"></div>
+      </div>
+      <div class="collections-sidebar">
+        <div id="paperDetailPanel" class="paper-detail-panel" style="display: none;">
+          <h3 style="font-size: 12px; color: #888; margin-bottom: 10px;">Selected Paper</h3>
+          <div id="paperDetailContent"></div>
+        </div>
+
+        <h2 style="font-size: 14px; color: #fff; margin-bottom: 12px;"><img src="icons/ane-collection-icon.svg" style="width:14px;height:14px;vertical-align:middle;margin-right:4px;">Collections</h2>
+
+        <div class="paper-search-box">
+          <input type="text" id="collectionPaperSearch" placeholder="Search papers to add...">
+          <button id="collectionPaperSearchBtn">Search</button>
+        </div>
+        <div id="collectionPaperResults" class="paper-search-results"></div>
+
+        <div id="collectionsList2" class="collections-list" style="margin-bottom: 12px;"></div>
+
+        <button class="new-collection-btn" id="newCollectionBtn2" style="width: 100%; height: auto; padding: 8px; font-size: 12px; margin-bottom: 12px;">
+          + New Collection
+        </button>
+
+        <div id="collectionView2" class="collection-view"></div>
+      </div>
+    </div><!-- End Collections Viewport -->
+
+    <!-- Fields Viewport -->
+    <div class="viewport" id="fieldsViewport">
+      <div class="fields-canvas" id="fieldsCanvas"></div>
+      <div class="fields-sidebar">
+        <h2 style="font-size: 14px; color: #fff; margin-bottom: 12px;">Field Topology</h2>
+
+        <div class="fields-search-box">
+          <input type="text" id="fieldSearchInput" placeholder="Search academic field...">
+          <button id="fieldSearchBtn">Search</button>
+        </div>
+
+        <div id="fieldSearchResults" class="paper-search-results" style="margin-bottom: 12px;"></div>
+
+        <div id="selectedFieldInfo" style="display: none;">
+          <h3 id="selectedFieldName" style="font-size: 16px; color: #4ecca3; margin-bottom: 12px;"></h3>
+
+          <div class="field-metrics" id="fieldMetrics">
+            <div class="field-metric">
+              <div class="field-metric-value" id="instHHI">-</div>
+              <div class="field-metric-label">Inst. HHI</div>
+            </div>
+            <div class="field-metric">
+              <div class="field-metric-value" id="authorHHI">-</div>
+              <div class="field-metric-label">Author HHI</div>
+            </div>
+            <div class="field-metric">
+              <div class="field-metric-value" id="ingroupBias">-</div>
+              <div class="field-metric-label">In-group %</div>
+            </div>
+            <div class="field-metric">
+              <div class="field-metric-value" id="recentWorks">-</div>
+              <div class="field-metric-label">Recent Works</div>
+            </div>
+          </div>
+
+          <div class="field-metrics-legend" style="font-size: 10px; color: #666; margin-bottom: 14px; line-height: 1.6;">
+            <div><strong style="color:#888;">Inst. HHI</strong> — Institutional concentration (0=spread across many, 1=dominated by few)</div>
+            <div><strong style="color:#888;">Author HHI</strong> — Author concentration (0=many contributors, 1=few dominate output)</div>
+            <div><strong style="color:#888;">In-group %</strong> — How often authors in this field cite each other vs outside work</div>
+            <div><strong style="color:#888;">Recent Works</strong> — Number of papers published in this field in the last 2 years</div>
+          </div>
+
+          <div class="forgotten-corners-section">
+            <h3>
+              Forgotten Corners
+              <button id="findCornersBtn" class="hipster-btn">Find Hidden Gems</button>
+            </h3>
+            <div id="cornersList" class="corners-list">
+              <div style="color: #666; font-size: 11px; padding: 12px;">Click "Find Hidden Gems" to discover overlooked subfields</div>
+            </div>
+          </div>
+
+          <div class="scoped-search-section" id="scopedSearchSection" style="display: none;">
+            <div class="scope-indicator">
+              <span class="scope-label">Searching in:</span>
+              <span class="scope-name" id="scopeName"></span>
+              <button class="clear-scope-btn" id="clearScopeBtn">&times;</button>
+            </div>
+
+            <div class="scoped-search-box">
+              <input type="text" id="scopedSearchInput" placeholder="Search papers in this subfield...">
+              <button id="scopedSearchBtn">Search</button>
+            </div>
+
+            <div id="scopedResults" class="scoped-results"></div>
+          </div>
+        </div>
+
+        <div id="fieldPlaceholder" style="text-align: center; padding: 40px 20px; color: #666;">
+          <div style="font-size: 32px; margin-bottom: 12px;">!</div>
+          <div style="font-size: 13px;">Work in progress...</div>
+          <div style="font-size: 11px; margin-top: 8px;">Field topology exploration is experimental and under development.</div>
+        </div>
+      </div>
+    </div><!-- End Fields Viewport -->
   </div>
 
+  <script src="field-topology.js"></script>
   <script src="fullpage.js"></script>
 </body>
 </html>

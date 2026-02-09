@@ -1,6 +1,25 @@
-// Crossref API for Author Network Explorer popup
-const CROSSREF_BASE = 'https://api.crossref.org';
-const MAILTO = 'author-network-explorer@example.com';
+// OpenAlex API for Author Network Explorer popup
+const OPENALEX_BASE = 'https://api.openalex.org';
+const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
+
+// Fetch wrapper for API rate limit tracking
+const _originalFetch = fetch;
+fetch = async function(...args) {
+  const response = await _originalFetch(...args);
+  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
+  if (url && url.includes('api.openalex.org')) {
+    const remaining = response.headers.get('x-ratelimit-remaining');
+    if (remaining !== null) {
+      chrome.storage.local.set({ rateLimitData: {
+        limit: parseInt(response.headers.get('x-ratelimit-limit')) || 0,
+        remaining: parseInt(remaining) || 0,
+        reset: response.headers.get('x-ratelimit-reset') || null,
+        lastUpdated: Date.now()
+      }});
+    }
+  }
+  return response;
+};
 
 // State
 let network = null;
@@ -25,41 +44,6 @@ const infoPanel = document.getElementById('infoPanel');
 
 // Physics lock tracking
 let physicsLockTimeout = null;
-
-// ============================================
-// Author ID Generation
-// ============================================
-
-function createAuthorId(author) {
-  if (author.ORCID) {
-    const orcid = author.ORCID.replace(/^https?:\/\/orcid\.org\//i, '');
-    return `orcid:${orcid}`;
-  }
-  if (author.orcid) {
-    return `orcid:${author.orcid}`;
-  }
-  const normalized = normalizeAuthorName(author.given, author.family);
-  return `name:${normalized}`;
-}
-
-function normalizeAuthorName(given, family) {
-  const normalize = (str) => {
-    if (!str) return '';
-    return str
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim();
-  };
-
-  const normalizedFamily = normalize(family) || 'unknown';
-  const normalizedGiven = normalize(given) || '';
-
-  return normalizedGiven ? `${normalizedFamily}-${normalizedGiven}` : normalizedFamily;
-}
 
 // ============================================
 // Network Visualization
@@ -144,20 +128,21 @@ function enablePhysicsTemporarily(duration = 1000) {
 }
 
 // ============================================
-// Search Authors using Crossref
+// Search Authors using OpenAlex
 // ============================================
 
 async function searchAuthors(query) {
   if (!query.trim()) return;
 
   const limitSelect = document.getElementById('limitSelect');
-  const limit = limitSelect ? limitSelect.value : 100;
+  const limit = limitSelect ? limitSelect.value : 25;
 
   searchResults.innerHTML = '<div class="search-result">Searching...</div>';
   searchResults.classList.add('visible');
 
   try {
-    const url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&query.author=${encodeURIComponent(query)}&rows=${limit}&select=DOI,title,author,published,is-referenced-by-count`;
+    // OpenAlex direct author search
+    const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=${limit}`;
 
     const response = await fetch(url);
 
@@ -167,43 +152,7 @@ async function searchAuthors(query) {
     }
 
     const data = await response.json();
-    const works = data.message?.items || [];
-
-    // Extract unique authors from works
-    const authorsMap = new Map();
-    works.forEach((work, workIndex) => {
-      if (!work.author) return;
-
-      work.author.forEach(author => {
-        const authorId = createAuthorId(author);
-        const displayName = author.given && author.family
-          ? `${author.given} ${author.family}`
-          : author.name || author.family || 'Unknown';
-
-        if (authorsMap.has(authorId)) {
-          const existing = authorsMap.get(authorId);
-          existing.paperCount++;
-          existing.citationCount += work['is-referenced-by-count'] || 0;
-        } else {
-          authorsMap.set(authorId, {
-            authorId,
-            name: displayName,
-            given: author.given || '',
-            family: author.family || '',
-            orcid: author.ORCID ? author.ORCID.replace(/^https?:\/\/orcid\.org\//i, '') : null,
-            isVerified: !!author.ORCID,
-            paperCount: 1,
-            citationCount: work['is-referenced-by-count'] || 0,
-            searchQuery: query
-          });
-        }
-      });
-    });
-
-    // Convert to array and sort
-    const authors = Array.from(authorsMap.values())
-      .filter(a => a.paperCount >= 1)
-      .sort((a, b) => b.paperCount - a.paperCount || b.citationCount - a.citationCount);
+    const authors = (data.results || []).map(author => normalizeAuthor(author));
 
     if (authors.length > 0) {
       searchResults.innerHTML = `
@@ -214,8 +163,8 @@ async function searchAuthors(query) {
         ${authors.map(author => `
           <div class="search-result" data-id="${author.authorId}">
             <input type="checkbox" class="author-checkbox" data-id="${author.authorId}" data-name="${author.name}">
-            <span class="result-name">${author.name}${author.isVerified ? ' <span style="color: #22c55e;" title="ORCID verified">&#x2713;</span>' : ''}</span>
-            <span class="result-stats">${author.paperCount} papers | ${formatNumber(author.citationCount)} citations</span>
+            <span class="result-name">${author.name}${author.orcid ? ' <span style="color: #22c55e;" title="ORCID verified">&#x2713;</span>' : ''}</span>
+            <span class="result-stats">${author.paperCount} papers | ${formatNumber(author.citationCount)} citations${author.hIndex ? ' | h:' + author.hIndex : ''}</span>
           </div>
         `).join('')}
       `;
@@ -268,6 +217,64 @@ async function searchAuthors(query) {
   }
 }
 
+/**
+ * Normalize OpenAlex author object
+ */
+function normalizeAuthor(author) {
+  if (!author) return null;
+
+  const shortId = author.id ? author.id.replace('https://openalex.org/', '') : null;
+
+  return {
+    authorId: shortId,
+    openAlexId: author.id,
+    name: author.display_name || 'Unknown',
+    orcid: author.orcid ? author.orcid.replace('https://orcid.org/', '') : null,
+    paperCount: author.works_count || 0,
+    citationCount: author.cited_by_count || 0,
+    hIndex: author.summary_stats?.h_index || null,
+    i10Index: author.summary_stats?.i10_index || null,
+    affiliations: (author.last_known_institutions || []).map(inst => ({
+      id: inst.id,
+      name: inst.display_name,
+      country: inst.country_code
+    })),
+    concepts: (author.x_concepts || []).slice(0, 5).map(c => ({
+      id: c.id,
+      name: c.display_name,
+      score: c.score
+    })),
+    countsByYear: author.counts_by_year || []
+  };
+}
+
+/**
+ * Normalize OpenAlex work object
+ */
+function normalizeWork(work) {
+  if (!work) return null;
+
+  const shortId = work.id ? work.id.replace('https://openalex.org/', '') : null;
+
+  return {
+    workId: shortId,
+    openAlexId: work.id,
+    doi: work.doi ? work.doi.replace('https://doi.org/', '') : null,
+    title: work.display_name || work.title || 'Untitled',
+    year: work.publication_year,
+    citationCount: work.cited_by_count || 0,
+    type: work.type,
+    authors: (work.authorships || []).map(authorship => ({
+      authorId: authorship.author?.id?.replace('https://openalex.org/', ''),
+      openAlexId: authorship.author?.id,
+      name: authorship.author?.display_name || 'Unknown',
+      orcid: authorship.author?.orcid?.replace('https://orcid.org/', ''),
+      position: authorship.author_position
+    })),
+    isRetracted: work.is_retracted || false
+  };
+}
+
 // ============================================
 // Load Author Network
 // ============================================
@@ -276,76 +283,39 @@ async function loadAuthorNetwork(authorId) {
   showLoading(true);
 
   try {
-    // Get author from cache
-    const cachedAuthor = authorCache.get(authorId);
+    const cleanId = authorId.replace('https://openalex.org/', '');
 
-    // Fetch works by this author
-    let url;
-    if (authorId.startsWith('orcid:')) {
-      const orcid = authorId.substring(6);
-      url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&filter=orcid:${orcid}&rows=100&select=DOI,title,author,published,is-referenced-by-count`;
-    } else {
-      const name = cachedAuthor?.name || cachedAuthor?.searchQuery || '';
-      url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&query.author=${encodeURIComponent(name)}&rows=100&select=DOI,title,author,published,is-referenced-by-count`;
+    // Get author details if not cached
+    let author = authorCache.get(cleanId);
+    if (!author || !author.hIndex) {
+      const authorUrl = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+      const authorResponse = await fetch(authorUrl);
+      const authorData = await authorResponse.json();
+      author = normalizeAuthor(authorData);
+      authorCache.set(cleanId, author);
     }
 
-    const response = await fetch(url);
-    const data = await response.json();
-    const works = data.message?.items || [];
+    // Fetch works by this author
+    const worksUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
+    const worksResponse = await fetch(worksUrl);
+    const worksData = await worksResponse.json();
+    const works = worksData.results || [];
 
-    // Convert works to papers format
-    const papers = works.map(work => workToPaper(work));
-
-    // Update author stats
-    let paperCount = 0;
-    let citationCount = 0;
-    papers.forEach(paper => {
-      if (paper.authors.some(a => a.authorId === authorId)) {
-        paperCount++;
-        citationCount += paper.citationCount || 0;
-      }
-    });
-
-    const author = {
-      ...cachedAuthor,
-      authorId,
-      paperCount,
-      citationCount
-    };
-    authorCache.set(authorId, author);
+    // Convert works to our paper format
+    const papers = works.map(work => normalizeWork(work));
 
     // Store for opening in new tab
-    currentNetworkData = { authorId, papers };
+    currentNetworkData = { authorId: cleanId, papers };
 
     // Build the network
-    buildNetwork(authorId, papers);
-    selectAuthor(authorId);
+    buildNetwork(cleanId, papers);
+    selectAuthor(cleanId);
 
   } catch (error) {
     console.error('Error loading network:', error);
   } finally {
     showLoading(false);
   }
-}
-
-// Convert Crossref work to paper format
-function workToPaper(work) {
-  let year = null;
-  if (work.published && work.published['date-parts'] && work.published['date-parts'][0]) {
-    year = work.published['date-parts'][0][0];
-  }
-
-  return {
-    doi: work.DOI,
-    title: Array.isArray(work.title) ? work.title[0] : work.title,
-    year,
-    citationCount: work['is-referenced-by-count'] || 0,
-    authors: (work.author || []).map(a => ({
-      authorId: createAuthorId(a),
-      name: a.given && a.family ? `${a.given} ${a.family}` : (a.name || a.family || 'Unknown'),
-      orcid: a.ORCID ? a.ORCID.replace(/^https?:\/\/orcid\.org\//i, '') : null
-    }))
-  };
 }
 
 // Load combined network from multiple author profiles
@@ -357,30 +327,23 @@ async function loadCombinedAuthorNetwork(authorIds, authorNames) {
   try {
     // Fetch papers from all author profiles in parallel
     const paperPromises = authorIds.map(authorId => {
-      const cachedAuthor = authorCache.get(authorId);
-      let url;
-      if (authorId.startsWith('orcid:')) {
-        const orcid = authorId.substring(6);
-        url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&filter=orcid:${orcid}&rows=100&select=DOI,title,author,published,is-referenced-by-count`;
-      } else {
-        const name = cachedAuthor?.name || '';
-        url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&query.author=${encodeURIComponent(name)}&rows=100&select=DOI,title,author,published,is-referenced-by-count`;
-      }
-      return fetch(url).then(r => r.json()).then(d => d.message?.items || []);
+      const cleanId = authorId.replace('https://openalex.org/', '');
+      const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100`;
+      return fetch(url).then(r => r.json()).then(d => d.results || []);
     });
 
     const allWorkArrays = await Promise.all(paperPromises);
 
-    // Merge works, deduplicating by DOI
+    // Merge works, deduplicating by OpenAlex ID
     const workMap = new Map();
     allWorkArrays.flat().forEach(work => {
-      if (work.DOI && !workMap.has(work.DOI)) {
-        workMap.set(work.DOI, work);
+      if (work.id && !workMap.has(work.id)) {
+        workMap.set(work.id, work);
       }
     });
 
     const combinedWorks = Array.from(workMap.values());
-    const combinedPapers = combinedWorks.map(work => workToPaper(work));
+    const combinedPapers = combinedWorks.map(work => normalizeWork(work));
 
     // Create combined author entry
     const combinedName = authorNames.join(' / ');
@@ -426,7 +389,7 @@ function buildCombinedNetwork(combinedAuthorId, centralAuthorIds, papers) {
 
     paper.authors.forEach(author => {
       if (author.authorId && !centralAuthorIds.has(author.authorId)) {
-        if (!shouldIncludeAuthor(author.authorId, paper.authors)) return;
+        if (!shouldIncludeAuthor(author, paper.authors)) return;
 
         if (coauthorMap.has(author.authorId)) {
           coauthorMap.get(author.authorId).paperCount++;
@@ -486,26 +449,13 @@ function buildCombinedNetwork(combinedAuthorId, centralAuthorIds, papers) {
   }
 }
 
-// Check if author is in a key position
-function getAuthorPosition(authorId, authors) {
-  if (!authors || authors.length === 0) return null;
-  const firstAuthor = authors[0];
-  const lastAuthor = authors[authors.length - 1];
-
-  const isFirst = firstAuthor && firstAuthor.authorId === authorId;
-  const isLast = lastAuthor && lastAuthor.authorId === authorId;
-
-  if (isFirst && isLast) return 'both';
-  if (isFirst) return 'first';
-  if (isLast) return 'senior';
-  return 'middle';
-}
-
-function shouldIncludeAuthor(authorId, authors) {
+// Check if author is in a key position (using OpenAlex position field)
+function shouldIncludeAuthor(author, authors) {
   if (authorFilter === 'all') return true;
 
-  const position = getAuthorPosition(authorId, authors);
-  return position === 'first' || position === 'senior' || position === 'both';
+  // OpenAlex provides author_position directly: 'first', 'middle', 'last'
+  const position = author.position;
+  return position === 'first' || position === 'last';
 }
 
 // Build network from papers data with cluster detection
@@ -524,7 +474,7 @@ function buildNetwork(centralAuthorId, papers) {
 
     paper.authors.forEach(author => {
       if (author.authorId && author.authorId !== centralAuthorId) {
-        if (!shouldIncludeAuthor(author.authorId, paper.authors)) return;
+        if (!shouldIncludeAuthor(author, paper.authors)) return;
 
         if (coauthorMap.has(author.authorId)) {
           const data = coauthorMap.get(author.authorId);
@@ -633,7 +583,8 @@ function buildNetwork(centralAuthorId, papers) {
           name: data.author.name,
           orcid: data.author.orcid,
           paperCount: null,
-          citationCount: null
+          citationCount: null,
+          hIndex: null
         });
       }
     });
@@ -733,20 +684,13 @@ async function expandNetwork(authorId) {
   showLoading(true);
 
   try {
-    const cachedAuthor = authorCache.get(authorId);
-    let url;
-    if (authorId.startsWith('orcid:')) {
-      const orcid = authorId.substring(6);
-      url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&filter=orcid:${orcid}&rows=50&select=DOI,title,author,published,is-referenced-by-count`;
-    } else {
-      const name = cachedAuthor?.name || '';
-      url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&query.author=${encodeURIComponent(name)}&rows=50&select=DOI,title,author,published,is-referenced-by-count`;
-    }
+    const cleanId = authorId.replace('https://openalex.org/', '');
+    const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=50`;
 
     const response = await fetch(url);
     const data = await response.json();
-    const works = data.message?.items || [];
-    const papers = works.map(work => workToPaper(work));
+    const works = data.results || [];
+    const papers = works.map(work => normalizeWork(work));
 
     const parentPos = network.getPositions([authorId])[authorId] || { x: 0, y: 0 };
     const newCoauthorsMap = new Map();
@@ -810,28 +754,13 @@ async function selectAuthor(authorId) {
   let author = authorCache.get(authorId);
   if (!author || author.paperCount === null) {
     try {
-      const cachedAuthor = authorCache.get(authorId);
-      let url;
-      if (authorId.startsWith('orcid:')) {
-        const orcid = authorId.substring(6);
-        url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&filter=orcid:${orcid}&rows=100&select=DOI,is-referenced-by-count`;
-      } else {
-        const name = cachedAuthor?.name || '';
-        url = `${CROSSREF_BASE}/works?mailto=${MAILTO}&query.author=${encodeURIComponent(name)}&rows=100&select=DOI,is-referenced-by-count`;
-      }
+      const cleanId = authorId.replace('https://openalex.org/', '');
+      const url = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
 
       const response = await fetch(url);
       const data = await response.json();
-      const works = data.message?.items || [];
 
-      let paperCount = works.length;
-      let citationCount = works.reduce((sum, w) => sum + (w['is-referenced-by-count'] || 0), 0);
-
-      author = {
-        ...cachedAuthor,
-        paperCount,
-        citationCount
-      };
+      author = normalizeAuthor(data);
       authorCache.set(authorId, author);
     } catch (e) {
       console.error('Error fetching author details:', e);
@@ -849,16 +778,28 @@ function updateInfoPanel(author) {
   document.getElementById('paperCount').textContent = author.paperCount ?? '-';
   document.getElementById('citationCount').textContent = formatNumber(author.citationCount) || '-';
 
-  // Update link - use ORCID link if available, otherwise DOI.org search
+  // Update h-index
+  const hIndexEl = document.getElementById('hIndex');
+  if (hIndexEl) {
+    hIndexEl.textContent = author.hIndex ?? '-';
+  }
+
+  // Update link - use ORCID link if available, otherwise OpenAlex profile
   const link = document.getElementById('scholarLink');
   if (author.orcid) {
     link.href = `https://orcid.org/${author.orcid}`;
     link.textContent = 'View on ORCID';
+  } else if (author.authorId) {
+    link.href = `https://openalex.org/authors/${author.authorId}`;
+    link.textContent = 'View on OpenAlex';
   } else {
-    link.href = `https://search.crossref.org/?q=${encodeURIComponent(author.name)}&from_ui=yes`;
-    link.textContent = 'Search on Crossref';
+    link.href = `https://openalex.org/authors?search=${encodeURIComponent(author.name)}`;
+    link.textContent = 'Search on OpenAlex';
   }
   link.style.display = 'inline';
+
+  // Render citation timeline
+  renderCitationTimeline(author);
 
   // Load activity trends
   loadActivityTrends(author.authorId);
@@ -936,6 +877,87 @@ function getTrendIndicator(recent, previous) {
   if (ratio > 1.15) return { icon: '\u2191', class: 'trend-up' };
   if (ratio < 0.85) return { icon: '\u2193', class: 'trend-down' };
   return { icon: '\u2192', class: 'trend-stable' };
+}
+
+// Render citation timeline using OpenAlex counts_by_year data
+function renderCitationTimeline(author) {
+  const container = document.getElementById('citationTimeline');
+  const chartEl = document.getElementById('timelineChart');
+  const startLabel = document.getElementById('timelineStart');
+  const endLabel = document.getElementById('timelineEnd');
+  const trendEl = document.getElementById('citationTrend');
+
+  if (!container || !chartEl) return;
+
+  const countsByYear = author.countsByYear || [];
+  if (countsByYear.length === 0) {
+    container.style.display = 'none';
+    return;
+  }
+
+  container.style.display = 'block';
+
+  // Sort by year and get last 10 years
+  const sortedData = countsByYear
+    .filter(d => d.year && d.cited_by_count !== undefined)
+    .sort((a, b) => a.year - b.year)
+    .slice(-10);
+
+  if (sortedData.length < 2) {
+    container.style.display = 'none';
+    return;
+  }
+
+  const years = sortedData.map(d => d.year);
+  const citations = sortedData.map(d => d.cited_by_count);
+  const maxCitations = Math.max(...citations, 1);
+
+  // Update labels
+  startLabel.textContent = years[0];
+  endLabel.textContent = years[years.length - 1];
+
+  // Calculate trend (last 3 years vs previous 3 years)
+  const recent = citations.slice(-3).reduce((a, b) => a + b, 0) / 3;
+  const previous = citations.slice(-6, -3).reduce((a, b) => a + b, 0) / 3;
+  const trend = getTrendIndicator(recent, previous);
+  if (trend && trendEl) {
+    trendEl.innerHTML = `<span class="${trend.class}">${trend.icon} ${recent > previous ? 'Up' : recent < previous ? 'Down' : 'Stable'}</span>`;
+  } else if (trendEl) {
+    trendEl.textContent = '-';
+  }
+
+  // Create SVG chart
+  const width = chartEl.offsetWidth || 200;
+  const height = 40;
+  const padding = 2;
+
+  // Build path for line and area
+  const points = citations.map((c, i) => {
+    const x = padding + (i / (citations.length - 1)) * (width - padding * 2);
+    const y = height - padding - (c / maxCitations) * (height - padding * 2);
+    return { x, y };
+  });
+
+  const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const areaPath = linePath + ` L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
+
+  chartEl.innerHTML = `
+    <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgb(6, 182, 212)" stop-opacity="0.25"/>
+          <stop offset="100%" stop-color="rgb(6, 182, 212)" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <path class="timeline-area" d="${areaPath}"/>
+      <path class="timeline-line" d="${linePath}"/>
+      ${points.map((p, i) => `
+        <circle class="timeline-dot" cx="${p.x}" cy="${p.y}" r="3">
+          <title>${years[i]}: ${formatNumber(citations[i])} citations</title>
+        </circle>
+      `).join('')}
+    </svg>
+  `;
 }
 
 // Open network in full tab
@@ -1046,14 +1068,15 @@ function toggleFavorite(authorId) {
   } else {
     favorites.push({
       authorId: authorId,
+      openAlexId: author.openAlexId || `https://openalex.org/${authorId}`,
       name: author.name,
       orcid: author.orcid || null,
       paperCount: author.paperCount,
       citationCount: author.citationCount,
+      hIndex: author.hIndex,
       lastChecked: Date.now(),
       lastPaperCount: author.paperCount,
-      hasUpdates: false,
-      searchQuery: author.searchQuery || author.name
+      hasUpdates: false
     });
   }
 
