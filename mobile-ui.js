@@ -19,42 +19,125 @@
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
   // ──────────────── Search overlay ────────────────
-  function ensureSearchBackBtn() {
-    if ($('#mobileSearchBack')) return;
-    const btn = document.createElement('button');
-    btn.id = 'mobileSearchBack';
-    btn.className = 'mobile-only mobile-search-back';
-    btn.type = 'button';
-    btn.setAttribute('aria-label', 'Close search');
-    btn.innerHTML = '<svg viewBox="0 0 18 18" aria-hidden="true">' +
-      '<line x1="12" y1="4" x2="5" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
-      '<line x1="5" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
-      '</svg>';
-    btn.addEventListener('click', () => toggleSearchOverlay(false));
-    document.body.appendChild(btn);
+  // Clean overlay (#mobileSearchOverlay). Typing is mirrored to the
+  // hidden #searchInput, the underlying #searchBtn drives the real
+  // search, and rows from #searchResults are mirrored into #mSearchList.
+
+  function setOverlayOpen(open) {
+    const overlay = $('#mobileSearchOverlay');
+    if (!overlay) return;
+    overlay.hidden = !open;
+    document.body.classList.toggle('mobile-search-open', open);
+    if (open) {
+      const input = $('#mSearchInput');
+      if (input) setTimeout(() => input.focus(), 60);
+    }
+    updateFabPosition();
   }
 
   function toggleSearchOverlay(force) {
     const open = typeof force === 'boolean'
       ? force
-      : !document.body.classList.contains('mobile-search-open');
-    document.body.classList.toggle('mobile-search-open', open);
+      : !!($('#mobileSearchOverlay') && $('#mobileSearchOverlay').hidden);
+    setOverlayOpen(open);
+  }
 
-    const single = $('#singleSearchBox');
-    const path = $('#pathFinderBox');
-    if (single) single.removeAttribute('data-mode-active');
-    if (path) path.removeAttribute('data-mode-active');
-    const pathVisible = path && path.style.display !== 'none' &&
-      getComputedStyle(path).display !== 'none';
-    const target = pathVisible ? path : single;
-    if (target) target.setAttribute('data-mode-active', 'true');
+  function wireSearchOverlay() {
+    const overlay = $('#mobileSearchOverlay');
+    const input = $('#mSearchInput');
+    const back = $('#mSearchBack');
+    const list = $('#mSearchList');
+    const heading = $('#mSearchHeading');
+    if (!overlay || !input || !back || !list) return;
 
-    ensureSearchBackBtn();
+    back.addEventListener('click', () => setOverlayOpen(false));
 
-    if (open && target) {
-      const input = target.querySelector('input');
-      if (input) setTimeout(() => input.focus(), 50);
+    // Typing → mirror to the real #searchInput; pressing Enter triggers
+    // the real #searchBtn so fullpage.js's search engine runs.
+    let debounce = null;
+    function runRealSearch() {
+      const realInput = $('#searchInput');
+      const realBtn = $('#searchBtn');
+      if (!realInput || !realBtn) return;
+      realInput.value = input.value;
+      realInput.dispatchEvent(new Event('input', { bubbles: true }));
+      realBtn.click();
     }
+    input.addEventListener('input', () => {
+      clearTimeout(debounce);
+      const q = input.value.trim();
+      if (heading) heading.textContent = q ? 'Searching…' : 'Type to search';
+      if (!q) {
+        list.textContent = '';
+        return;
+      }
+      debounce = setTimeout(runRealSearch, 220);
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        clearTimeout(debounce);
+        runRealSearch();
+      }
+    });
+
+    // Mirror result rows from #searchResults → #mSearchList.
+    const realResults = $('#searchResults');
+    if (realResults) {
+      const obs = new MutationObserver(() => mirrorSearchResults());
+      obs.observe(realResults, { childList: true, subtree: true });
+    }
+
+    // Tap-outside (chrome above the overlay) is naturally swallowed by
+    // the fullscreen overlay — no escape handler needed beyond the
+    // back button.
+  }
+
+  function mirrorSearchResults() {
+    const overlay = $('#mobileSearchOverlay');
+    if (!overlay || overlay.hidden) return;
+    const src = $('#searchResults');
+    const list = $('#mSearchList');
+    const heading = $('#mSearchHeading');
+    if (!src || !list) return;
+
+    const rows = $$('.search-result', src);
+    list.textContent = '';
+
+    if (!rows.length) {
+      if (heading) heading.textContent = 'No results';
+      return;
+    }
+    if (heading) heading.textContent = 'Results';
+
+    rows.forEach((srcRow) => {
+      const text = (srcRow.textContent || '').trim();
+      if (!text) return;
+      // Heuristic split: name on first non-empty line, rest as affiliation.
+      const lines = text.split('\n').map((s) => s.trim()).filter(Boolean);
+      const name = lines[0] || text;
+      const aff = lines.slice(1).join(' · ');
+
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'm-search-row';
+      row.innerHTML =
+        '<span class="m-search-dot"></span>' +
+        '<div class="m-search-main">' +
+          '<div class="m-search-name"></div>' +
+          (aff ? '<div class="m-search-aff"></div>' : '') +
+        '</div>';
+      row.querySelector('.m-search-name').textContent = name;
+      const affEl = row.querySelector('.m-search-aff');
+      if (affEl) affEl.textContent = aff;
+
+      row.addEventListener('click', () => {
+        // Trigger the real row's click so fullpage.js selects/loads
+        // the author. Then close the overlay.
+        srcRow.click();
+        setOverlayOpen(false);
+      });
+      list.appendChild(row);
+    });
   }
 
   // ──────────────── Left panel drawer ────────────────
@@ -383,30 +466,10 @@
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') toggleSearchOverlay(false);
-    });
-    document.addEventListener('click', (e) => {
-      if (!isMobile()) return;
-      if (!document.body.classList.contains('mobile-search-open')) return;
-      const t = e.target;
-      if (!t || !t.closest) return;
-      // Close only when the user actually picks a result. Tapping the
-      // Search/Find-Path *button* must NOT close — results need to render.
-      if (t.closest('.search-result, .path-result, .author-result')) {
-        setTimeout(() => toggleSearchOverlay(false), 0);
-      }
+      if (e.key === 'Escape') setOverlayOpen(false);
     });
 
-    // Also: if #searchResults gets hidden by fullpage.js (it removes the
-    // .visible class after a result is picked), close our overlay too.
-    const sr = $('#searchResults');
-    if (sr) {
-      new MutationObserver(() => {
-        if (!isMobile()) return;
-        if (!document.body.classList.contains('mobile-search-open')) return;
-        if (!sr.classList.contains('visible')) toggleSearchOverlay(false);
-      }).observe(sr, { attributes: true, attributeFilter: ['class'] });
-    }
+    wireSearchOverlay();
 
     window.addEventListener('resize', updateFabPosition);
     updateFabPosition();

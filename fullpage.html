@@ -2193,6 +2193,26 @@
     </svg>
   </button>
 
+  <!-- Mobile-only search overlay. Mirrors typing/results to/from the
+       existing #searchInput / #searchBtn / #searchResults so the real
+       fullpage.js search engine still drives everything. -->
+  <div class="mobile-only m-search-overlay" id="mobileSearchOverlay" hidden>
+    <div class="m-search-bar">
+      <button class="m-icon-btn" id="mSearchBack" type="button" aria-label="Close search">
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <line x1="12" y1="4" x2="5" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="5" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <input class="m-search-input" id="mSearchInput" type="text"
+             placeholder="Search any researcher…" autocomplete="off" autocapitalize="off">
+    </div>
+    <div class="m-search-results" id="mSearchResults">
+      <div class="m-search-section-h mono" id="mSearchHeading">Type to search</div>
+      <div id="mSearchList"></div>
+    </div>
+  </div>
+
   <!-- Mobile-only bottom sheet. Hidden on desktop via mobile.css.
        Content is mirrored at runtime by mobile-ui.js from the existing
        sidebar elements (real data populated by fullpage.js). -->

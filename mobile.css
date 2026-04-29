@@ -418,147 +418,104 @@
   .mobile-fab svg { width: 18px; height: 18px; }
   .mobile-fab[data-hidden="true"] { opacity: 0; pointer-events: none; }
 
-  /* ──────────────────── SEARCH OVERLAY (full-screen) ──────────────────── */
-  body.mobile-search-open {
-    overflow: hidden;
-  }
-  body.mobile-search-open::before {
-    content: "";
+  /* ──────────────────── SEARCH OVERLAY ──────────────────── */
+  /* Clean, prototype-faithful overlay. The existing #singleSearchBox /
+   * #pathFinderBox / .mode-toggle / .search-results are kept hidden on
+   * mobile (already done above); mobile-ui.js drives this overlay and
+   * proxies typing/clicks to those underlying elements. */
+  .m-search-overlay {
     position: fixed;
     inset: 0;
     background: var(--bg);
     z-index: 80;
-  }
-
-  body.mobile-search-open .mode-toggle,
-  body.mobile-search-open #singleSearchBox[data-mode-active="true"],
-  body.mobile-search-open #pathFinderBox[data-mode-active="true"] {
-    position: fixed;
-    left: 0; right: 0;
-    z-index: 81;
-    background: var(--bg);
-  }
-
-  body.mobile-search-open .mode-toggle {
-    display: flex;
-    top: max(12px, env(safe-area-inset-top));
-    padding: calc(12px + env(safe-area-inset-top)) 12px 12px;
-    gap: 6px;
-    border-bottom: var(--rule);
-  }
-  body.mobile-search-open .mode-btn {
-    flex: 1;
-    padding: 8px 12px;
-    font-size: 12px;
-    border: var(--rule);
-    border-radius: 4px;
-    background: var(--surf-0);
-    color: var(--fg-2);
-  }
-  body.mobile-search-open .mode-btn.active {
-    background: var(--surf-2);
-    color: var(--fg-0);
-    box-shadow: inset 0 -1px 0 var(--accent);
-  }
-
-  body.mobile-search-open #singleSearchBox[data-mode-active="true"],
-  body.mobile-search-open #pathFinderBox[data-mode-active="true"] {
-    display: flex !important;
-    top: calc(60px + env(safe-area-inset-top));
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px;
-    border-bottom: var(--rule);
-  }
-  body.mobile-search-open #singleSearchBox input,
-  body.mobile-search-open #pathFinderBox input {
-    flex: 1 1 100%;
-    min-width: 0;
-    padding: 10px 12px;
-    background: var(--surf-0);
-    border: var(--rule);
-    border-radius: 4px;
-    color: var(--fg-0);
-    font-size: 15px;
-  }
-  body.mobile-search-open #singleSearchBox input:focus,
-  body.mobile-search-open #pathFinderBox input:focus {
-    border-color: var(--accent-dim);
-    outline: 0;
-  }
-  body.mobile-search-open #singleSearchBox button,
-  body.mobile-search-open #pathFinderBox button {
-    background: var(--accent);
-    color: oklch(0.18 0.02 60);
-    border: 1px solid var(--accent);
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-weight: 500;
-    font-size: 12px;
-  }
-  body.mobile-search-open #singleSearchBox select,
-  body.mobile-search-open #pathFinderBox select {
-    background: var(--surf-0);
-    color: var(--fg-1);
-    border: var(--rule);
-    border-radius: 4px;
-    padding: 8px;
-    font-size: 12px;
-  }
-
-  /* Back arrow in the search overlay (added by mobile-ui.js) */
-  .mobile-search-back {
     display: none;
-    position: fixed;
-    top: max(8px, env(safe-area-inset-top));
-    left: 8px;
-    z-index: 82;
-    width: 36px;
-    height: 36px;
-    border-radius: 4px;
+    flex-direction: column;
+  }
+  .m-search-overlay:not([hidden]) { display: flex; }
+
+  .m-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    border-bottom: var(--rule);
+  }
+  .m-search-input {
+    flex: 1;
+    font-size: 15px;
     background: transparent;
     border: 0;
-    color: var(--fg-1);
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
-  .mobile-search-back svg { width: 18px; height: 18px; }
-  body.mobile-search-open .mobile-search-back { display: inline-flex; }
-
-  /* Make room for the back arrow at the left of the mode-toggle row */
-  body.mobile-search-open .mode-toggle { padding-left: 52px; }
-
-  body.mobile-search-open .search-results {
-    position: fixed;
-    top: calc(120px + env(safe-area-inset-top));
-    left: 0; right: 0; bottom: 0;
-    z-index: 81;
-    background: var(--bg);
-    overflow-y: auto;
-    padding: 8px 0;
-    max-height: none;
-    border-radius: 0;
-    width: auto;
-  }
-  /* Outside the overlay, the existing dropdown would float at a desktop
-   * position (top:60px; left:20px; width:500px) — clip it on mobile. */
-  body:not(.mobile-search-open) .search-results,
-  body:not(.mobile-search-open) .search-results.visible {
-    display: none !important;
-  }
-
-  /* Result rows inside the overlay become full-width tappable rows. */
-  body.mobile-search-open .search-results .search-result {
-    padding: 12px 16px;
-    border-bottom: var(--rule-soft);
-    background: transparent;
+    outline: 0;
     color: var(--fg-0);
-    font-size: 14px;
+    padding: 8px 0;
+    -webkit-appearance: none;
+    min-width: 0;
+  }
+  .m-search-input::placeholder { color: var(--fg-3); }
+
+  .m-search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  .m-search-section-h {
+    font-size: 10px;
+    color: var(--fg-3);
+    letter-spacing: 0.1em;
+    padding: 8px 16px;
+    text-transform: uppercase;
+  }
+  .m-search-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    background: transparent;
+    border: 0;
+    color: var(--fg-0);
     cursor: pointer;
   }
-  body.mobile-search-open .search-results .search-result:active {
-    background: var(--surf-1);
+  .m-search-row:active { background: var(--surf-1); }
+  .m-search-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--fg-3);
+    flex-shrink: 0;
+  }
+  .m-search-main { flex: 1; min-width: 0; }
+  .m-search-name {
+    font-size: 14px;
+    color: var(--fg-0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-search-aff {
+    font-size: 11px;
+    color: var(--fg-2);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-search-stat {
+    font-size: 11px;
+    color: var(--fg-2);
+    font-family: var(--font-mono);
+  }
+
+  /* Hide the original form elements completely on mobile — the overlay
+   * above is what the user interacts with. */
+  #singleSearchBox,
+  #pathFinderBox,
+  .mode-toggle,
+  .search-results,
+  .search-results.visible {
+    display: none !important;
   }
 
   body { padding-bottom: env(safe-area-inset-bottom); }
