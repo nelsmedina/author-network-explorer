@@ -502,6 +502,26 @@
     padding: 8px 0;
     max-height: none;
     border-radius: 0;
+    width: auto;
+  }
+  /* Outside the overlay, the existing dropdown would float at a desktop
+   * position (top:60px; left:20px; width:500px) — clip it on mobile. */
+  body:not(.mobile-search-open) .search-results,
+  body:not(.mobile-search-open) .search-results.visible {
+    display: none !important;
+  }
+
+  /* Result rows inside the overlay become full-width tappable rows. */
+  body.mobile-search-open .search-results .search-result {
+    padding: 12px 16px;
+    border-bottom: var(--rule-soft);
+    background: transparent;
+    color: var(--fg-0);
+    font-size: 14px;
+    cursor: pointer;
+  }
+  body.mobile-search-open .search-results .search-result:active {
+    background: var(--surf-1);
   }
 
   body { padding-bottom: env(safe-area-inset-bottom); }

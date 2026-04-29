@@ -353,10 +353,25 @@
       if (!document.body.classList.contains('mobile-search-open')) return;
       const t = e.target;
       if (!t || !t.closest) return;
-      if (t.closest('#searchBtn, #findPathBtn')) {
+      // Close the overlay when the user submits a search/find-path, OR when
+      // they tap a search-result row, OR a path-result row. Without this
+      // last branch the user gets stuck inside the overlay after picking a
+      // result.
+      if (t.closest('#searchBtn, #findPathBtn, .search-result, .path-result, .author-result')) {
         setTimeout(() => toggleSearchOverlay(false), 0);
       }
     });
+
+    // Also: if #searchResults gets hidden by fullpage.js (it removes the
+    // .visible class after a result is picked), close our overlay too.
+    const sr = $('#searchResults');
+    if (sr) {
+      new MutationObserver(() => {
+        if (!isMobile()) return;
+        if (!document.body.classList.contains('mobile-search-open')) return;
+        if (!sr.classList.contains('visible')) toggleSearchOverlay(false);
+      }).observe(sr, { attributes: true, attributeFilter: ['class'] });
+    }
 
     window.addEventListener('resize', updateFabPosition);
     updateFabPosition();
