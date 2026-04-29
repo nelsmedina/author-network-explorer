@@ -2,13 +2,15 @@
 // Caches the static app shell so the page loads instantly and works offline.
 // API requests to OpenAlex always go to the network (never cached).
 
-const CACHE_VERSION = 'ane-pwa-v1';
+const CACHE_VERSION = 'ane-pwa-v2';
 const APP_SHELL = [
   './',
   './index.html',
   './fullpage.html',
   './fullpage.js',
   './styles.css',
+  './mobile.css',
+  './mobile-ui.js',
   './openalex-api.js',
   './field-topology.js',
   './network-worker.js',

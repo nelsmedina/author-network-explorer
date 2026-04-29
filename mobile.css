@@ -1,0 +1,210 @@
+/* mobile.css
+ * Phone-sized overrides on top of the desktop layout.
+ * Activates below 768px wide. Desktop styles are unchanged.
+ */
+@media (max-width: 768px) {
+  html, body {
+    height: 100vh;
+    height: 100dvh;
+  }
+
+  /* ----- Header: thin, icon-only ----- */
+  header {
+    padding: 6px 10px;
+    padding-top: max(6px, env(safe-area-inset-top));
+    gap: 8px;
+    min-height: 44px;
+    flex-wrap: nowrap;
+  }
+  header .logo-text { display: none; }
+  header .logo .logo-icon { width: 28px; height: 28px; }
+  header .logo-subtitle { display: none; }
+
+  /* Hide the inline input forms in the header. We'll show the active one as
+   * an overlay below the header when the user taps the search icon. */
+  .search-box,
+  .path-finder-box {
+    display: none !important;
+  }
+
+  /* When the body opts a panel in, surface it as a fixed overlay. */
+  body.mobile-search-open #singleSearchBox,
+  body.mobile-search-open #pathFinderBox[data-mode-active="true"] {
+    display: flex !important;
+    position: fixed;
+    top: calc(44px + env(safe-area-inset-top));
+    left: 0; right: 0;
+    z-index: 30;
+    padding: 8px 10px;
+    background: #16213e;
+    border-bottom: 1px solid #333;
+    max-width: none;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  body.mobile-search-open #singleSearchBox input,
+  body.mobile-search-open #pathFinderBox input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  body.mobile-search-open #singleSearchBox button,
+  body.mobile-search-open #pathFinderBox button {
+    flex: 0 0 auto;
+  }
+  body.mobile-search-open #singleSearchBox select,
+  body.mobile-search-open #pathFinderBox select {
+    flex: 0 0 auto;
+  }
+
+  /* Mode toggle: shrink, push to right */
+  .mode-toggle {
+    margin-left: auto;
+    gap: 2px;
+  }
+  .mode-btn {
+    padding: 6px 8px;
+    font-size: 11px;
+  }
+
+  /* Mobile-only icon buttons in the header (added in fullpage.html) */
+  .mobile-only { display: none; }
+  .mobile-icon-btn {
+    width: 36px;
+    height: 36px;
+    background: transparent;
+    border: 1px solid #333;
+    border-radius: 8px;
+    color: #eee;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    flex: 0 0 auto;
+  }
+  .mobile-icon-btn:active { background: #1f2b4d; }
+  .mobile-icon-btn.active { border-color: #4ecca3; color: #4ecca3; }
+  .mobile-icon-btn svg { width: 18px; height: 18px; fill: currentColor; }
+  .mobile-only { display: inline-flex; }
+
+  /* ----- Tab bar: icons only ----- */
+  .tab-bar {
+    padding: 4px 8px;
+    gap: 2px;
+    overflow-x: auto;
+  }
+  .tab-label { display: none; }
+  .tab-btn {
+    padding: 6px 10px;
+    font-size: 11px;
+    flex: 0 0 auto;
+  }
+
+  /* ----- Main content + viewports ----- */
+  .main-content { min-height: 0; }
+  .viewport.active { display: flex; }
+  #authorsViewport,
+  #collectionsViewport,
+  #fieldsViewport {
+    flex-direction: row;
+    position: relative;
+  }
+  #network,
+  #authorsViewport #network {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* ----- Left panel: full-height drawer with backdrop ----- */
+  .left-panel {
+    width: 85vw;
+    max-width: 340px;
+    transform: translateX(-100%);
+    box-shadow: 2px 0 24px rgba(0,0,0,0.6);
+  }
+  .left-panel.expanded { transform: translateX(0); }
+  /* Tap target for the existing edge handle: bigger on touch */
+  .left-panel-toggle {
+    width: 18px;
+    height: 80px;
+    right: -18px;
+    font-size: 10px;
+  }
+  /* Backdrop when the panel is open */
+  body.mobile-leftpanel-open::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 19;
+    pointer-events: auto;
+  }
+
+  /* ----- Right sidebar: bottom sheet ----- */
+  .sidebar,
+  #authorsViewport > .sidebar,
+  #collectionsViewport .collections-sidebar,
+  #fieldsViewport .fields-sidebar {
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    width: auto;
+    height: 60vh;
+    max-height: 60vh;
+    transform: translateY(calc(100% - 40px));
+    transition: transform 0.28s ease;
+    z-index: 15;
+    border-top: 1px solid #333;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.45);
+    border-radius: 14px 14px 0 0;
+    padding-top: 28px;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  .sidebar.mobile-expanded,
+  .collections-sidebar.mobile-expanded,
+  .fields-sidebar.mobile-expanded {
+    transform: translateY(0);
+  }
+  /* Drag handle */
+  .sidebar::before,
+  .collections-sidebar::before,
+  .fields-sidebar::before {
+    content: "";
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: #555;
+    border-radius: 2px;
+    pointer-events: none;
+  }
+  /* The whole top strip is tappable */
+  .sidebar > .mobile-sheet-handle,
+  .collections-sidebar > .mobile-sheet-handle,
+  .fields-sidebar > .mobile-sheet-handle {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 28px;
+    cursor: grab;
+    z-index: 2;
+  }
+  .sidebar.mobile-has-content::before {
+    background: #4ecca3;
+  }
+
+  /* ----- Misc panels: keep but adjust ----- */
+  .papers-list { max-height: 50vh; }
+  .paper-detail-panel {
+    width: 100vw !important;
+    height: 100vh !important;
+    max-width: none !important;
+    border-radius: 0 !important;
+  }
+
+  /* When viewport-fit=cover lifts content under the home bar, give the
+   * graph some breathing room. */
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}

@@ -10,6 +10,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Author Net">
   <link rel="apple-touch-icon" href="icons/icon128.png">
+  <link rel="stylesheet" href="mobile.css">
   <script src="pwa-shim.js"></script>
   <script src="vis-network.min.js"></script>
   <style>
@@ -1872,6 +1873,9 @@
       <button class="mode-btn active" id="singleModeBtn" title="Single author network">Single</button>
       <button class="mode-btn" id="pathModeBtn" title="Find path between two authors">Path Finder</button>
     </div>
+    <button class="mobile-icon-btn mobile-only" id="mobileSearchBtn" type="button" title="Search" aria-label="Search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2a8 8 0 105.293 14.293l4.207 4.207 1.414-1.414-4.207-4.207A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+    </button>
   </header>
 
   <div class="tab-bar">
@@ -2174,6 +2178,7 @@
 
   <script src="field-topology.js"></script>
   <script src="fullpage.js"></script>
+  <script src="mobile-ui.js" defer></script>
   <script>
     // Register the PWA service worker only when running outside the extension.
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
