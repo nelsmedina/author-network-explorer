@@ -1,0 +1,522 @@
+/* mobile.css
+ * Mobile redesign — calm modernist dark theme adopted 1:1 from
+ * Mobile Package/. Activates below 768px. Desktop styles unchanged.
+ *
+ * On mobile:
+ *   - Existing right-side .sidebar is hidden entirely.
+ *   - Existing top .tab-bar is hidden; tabs live inside the sheet.
+ *   - A new bottom sheet (id="mobileSheet") renders the prototype's layout.
+ *   - mobile-ui.js mirrors real data from #authorName/#paperCount/etc.
+ *     into the sheet — no mock data, fullpage.js keeps owning the state.
+ */
+
+@media (max-width: 768px) {
+
+  /* ──────────────────── DESIGN TOKENS ──────────────────── */
+  :root {
+    --bg:     oklch(0.155 0.005 250);
+    --surf-0: oklch(0.185 0.005 250);
+    --surf-1: oklch(0.215 0.006 250);
+    --surf-2: oklch(0.255 0.006 250);
+
+    --fg-0: oklch(0.96 0.005 250);
+    --fg-1: oklch(0.78 0.005 250);
+    --fg-2: oklch(0.58 0.005 250);
+    --fg-3: oklch(0.38 0.005 250);
+    --fg-4: oklch(0.28 0.005 250);
+
+    --accent: oklch(0.78 0.14 60);
+    --accent-dim: oklch(0.78 0.14 60 / 0.5);
+
+    --font-sans: "Inter Tight", -apple-system, system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+    --rule: 1px solid oklch(0.28 0.005 250);
+    --rule-soft: 1px solid oklch(0.23 0.005 250);
+  }
+
+  html, body {
+    height: 100vh;
+    height: 100dvh;
+    background: var(--bg);
+    color: var(--fg-0);
+    font-family: var(--font-sans);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .mono {
+    font-family: var(--font-mono);
+    font-feature-settings: "tnum", "zero";
+    letter-spacing: 0;
+  }
+
+  /* ──────────────────── HEADER (3-col grid) ──────────────────── */
+  header {
+    display: grid;
+    grid-template-columns: 36px 1fr 36px;
+    grid-gap: 8px;
+    align-items: center;
+    padding: 4px 12px 8px;
+    padding-top: max(4px, env(safe-area-inset-top));
+    background: var(--bg);
+    border-bottom: var(--rule);
+    min-height: 52px;
+  }
+
+  header .logo { display: none; }
+  .search-box,
+  .path-finder-box {
+    display: none !important;
+  }
+
+  .mobile-topbar-title {
+    text-align: center;
+    min-width: 0;
+    overflow: hidden;
+  }
+  .mobile-topbar-cluster {
+    font-size: 9px;
+    letter-spacing: 0.06em;
+    text-transform: lowercase;
+    color: var(--fg-2);
+    margin-bottom: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .mobile-topbar-cluster:empty { display: none; }
+  .mobile-topbar-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--fg-0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.2;
+  }
+
+  .mobile-only { display: none; }
+  .mobile-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    background: transparent;
+    border: 0;
+    color: var(--fg-1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .mobile-icon-btn:active { background: var(--surf-1); }
+  .mobile-icon-btn svg { width: 18px; height: 18px; }
+
+  .mobile-only.mobile-icon-btn { display: inline-flex; }
+  .mobile-topbar-title.mobile-only { display: block; }
+  .mobile-only.m-sheet { display: flex; }
+  .mobile-only.mobile-fab { display: inline-flex; }
+
+  .mode-toggle { display: none; }
+  .left-panel-toggle { display: none !important; }
+
+  /* ──────────────────── HIDE DESKTOP CHROME ──────────────────── */
+  /* Existing tab-bar lives inside the sheet on mobile. Hide the desktop one. */
+  .tab-bar { display: none !important; }
+
+  /* Existing right-side sidebars are replaced by the bottom sheet. */
+  #authorsViewport > .sidebar,
+  #collectionsViewport .collections-sidebar,
+  #fieldsViewport .fields-sidebar,
+  .sidebar {
+    display: none !important;
+  }
+
+  /* Floating canvas chrome (legend, path legend, filter toggles, combine
+   * bar, network placeholder) — hidden on mobile to keep the graph clean.
+   * The underlying functionality (filter state, etc.) still lives in the
+   * DOM; we just don't surface the controls until we move them into a
+   * settings sheet. */
+  .legend,
+  .path-legend,
+  .filter-toggles,
+  .combine-bar,
+  .path-controls,
+  .network-placeholder {
+    display: none !important;
+  }
+
+  /* ──────────────────── MAIN + GRAPH ──────────────────── */
+  .main-content {
+    min-height: 0;
+    background: var(--bg);
+  }
+  .viewport.active { display: flex; }
+  #authorsViewport,
+  #collectionsViewport,
+  #fieldsViewport {
+    flex-direction: row;
+    position: relative;
+  }
+  #network,
+  #authorsViewport #network {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    background: var(--bg);
+  }
+
+  /* ──────────────────── DRAWER (left panel) ──────────────────── */
+  .left-panel {
+    width: 280px;
+    max-width: 85vw;
+    background: var(--surf-0);
+    border-right: var(--rule);
+    transform: translateX(-100%);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+    z-index: 70;
+  }
+  .left-panel.expanded {
+    transform: translateX(0);
+    animation: aneSlideIn 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @keyframes aneSlideIn {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(0); }
+  }
+
+  body.mobile-leftpanel-open::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 60;
+  }
+
+  .left-panel-content {
+    padding: 14px 16px;
+  }
+  .left-panel h2 {
+    font-size: 10px;
+    color: var(--fg-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 10px;
+    font-weight: 400;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .left-panel .new-papers-section,
+  .left-panel .favorites-section-left,
+  .left-panel .collections-section {
+    padding: 14px 0;
+    border-bottom: var(--rule-soft);
+  }
+  .left-panel .new-papers-section:last-child,
+  .left-panel .favorites-section-left:last-child,
+  .left-panel .collections-section:last-child {
+    border-bottom: 0;
+  }
+
+  /* ──────────────────── BOTTOM SHEET ──────────────────── */
+  .m-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    background: var(--surf-0);
+    border-top: var(--rule);
+    border-radius: 14px 14px 0 0;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+    transition: height 0.25s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .m-sheet[data-snap="peek"] { height: 96px; }
+  .m-sheet[data-snap="half"] { height: 380px; }
+  .m-sheet[data-snap="full"] { height: calc(100vh - 60px); height: calc(100dvh - 60px); }
+
+  .m-sheet-handle {
+    flex-shrink: 0;
+    width: 100%;
+    height: 16px;
+    cursor: grab;
+    touch-action: none;
+    position: relative;
+  }
+  .m-sheet-handle::before {
+    content: "";
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: var(--fg-3);
+    border-radius: 2px;
+  }
+
+  .m-sheet-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 4px 16px 24px;
+  }
+
+  /* Peek state: only show the peek block; hide the readout. */
+  .m-sheet[data-snap="peek"] .m-readout { display: none; }
+  .m-sheet:not([data-snap="peek"]) .m-peek { display: none; }
+
+  .m-peek { padding: 4px 0; }
+  .m-peek-name {
+    font-size: 16px;
+    color: var(--fg-0);
+    font-weight: 500;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-peek-stats {
+    font-size: 11px;
+    color: var(--fg-2);
+    display: flex;
+    gap: 8px;
+  }
+  .m-peek-dot { color: var(--fg-4); }
+
+  /* Readout */
+  .m-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0 12px;
+    margin-bottom: 4px;
+    border-bottom: var(--rule);
+  }
+  .m-tab {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 12px;
+    color: var(--fg-2);
+    border-radius: 4px;
+    background: transparent;
+    border: 0;
+  }
+  .m-tab.active {
+    color: var(--fg-0);
+    background: var(--surf-1);
+  }
+
+  .m-ro-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-top: 4px;
+  }
+  .m-ro-head-main { min-width: 0; flex: 1; }
+  .m-ro-name {
+    font-size: 22px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    color: var(--fg-0);
+    word-wrap: break-word;
+  }
+  .m-ro-fav {
+    color: var(--fg-3);
+    padding: 4px;
+    background: transparent;
+    border: 0;
+  }
+  .m-ro-fav:active,
+  .m-ro-fav.active { color: var(--accent); }
+
+  .m-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 14px 0 18px;
+  }
+  .m-stat {
+    background: var(--surf-1);
+    padding: 10px 8px;
+    border-radius: 4px;
+    text-align: left;
+  }
+  .m-stat-v {
+    font-size: 18px;
+    color: var(--fg-0);
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .m-stat-v.accent { color: var(--accent); }
+  .m-stat-l {
+    font-size: 9px;
+    color: var(--fg-2);
+    margin-top: 4px;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+  }
+
+  .m-section { margin-bottom: 20px; }
+  .m-section-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 10px;
+    color: var(--fg-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .m-paper {
+    padding: 10px 0;
+    border-bottom: var(--rule-soft);
+  }
+  .m-paper:last-child { border-bottom: 0; }
+  .m-paper-title {
+    font-size: 12px;
+    color: var(--fg-1);
+    line-height: 1.4;
+    margin-bottom: 4px;
+    text-decoration: none;
+    display: block;
+  }
+  .m-paper-meta {
+    display: flex;
+    gap: 5px;
+    font-size: 9px;
+    color: var(--fg-3);
+    font-family: var(--font-mono);
+  }
+
+  /* ──────────────────── FAB ──────────────────── */
+  .mobile-fab {
+    position: fixed;
+    right: 16px;
+    bottom: 112px;
+    z-index: 50;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--surf-2);
+    border: 1px solid var(--accent-dim);
+    color: var(--accent);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 0 1px oklch(0.78 0.14 60 / 0.15);
+    align-items: center;
+    justify-content: center;
+    transition: bottom 0.25s, opacity 0.2s;
+    padding: 0;
+  }
+  .mobile-fab:active { transform: scale(0.96); }
+  .mobile-fab svg { width: 18px; height: 18px; }
+  .mobile-fab[data-hidden="true"] { opacity: 0; pointer-events: none; }
+
+  /* ──────────────────── SEARCH OVERLAY ──────────────────── */
+  /* Clean, prototype-faithful overlay. The existing #singleSearchBox /
+   * #pathFinderBox / .mode-toggle / .search-results are kept hidden on
+   * mobile (already done above); mobile-ui.js drives this overlay and
+   * proxies typing/clicks to those underlying elements. */
+  .m-search-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 80;
+    display: none;
+    flex-direction: column;
+  }
+  .m-search-overlay:not([hidden]) { display: flex; }
+
+  .m-search-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    padding-top: calc(12px + env(safe-area-inset-top));
+    border-bottom: var(--rule);
+  }
+  .m-search-input {
+    flex: 1;
+    font-size: 15px;
+    background: transparent;
+    border: 0;
+    outline: 0;
+    color: var(--fg-0);
+    padding: 8px 0;
+    -webkit-appearance: none;
+    min-width: 0;
+  }
+  .m-search-input::placeholder { color: var(--fg-3); }
+
+  .m-search-results {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0 calc(8px + env(safe-area-inset-bottom));
+  }
+  .m-search-section-h {
+    font-size: 10px;
+    color: var(--fg-3);
+    letter-spacing: 0.1em;
+    padding: 8px 16px;
+    text-transform: uppercase;
+  }
+  .m-search-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+    text-align: left;
+    padding: 12px 16px;
+    background: transparent;
+    border: 0;
+    color: var(--fg-0);
+    cursor: pointer;
+  }
+  .m-search-row:active { background: var(--surf-1); }
+  .m-search-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    border: 1.5px solid var(--fg-3);
+    flex-shrink: 0;
+  }
+  .m-search-main { flex: 1; min-width: 0; }
+  .m-search-name {
+    font-size: 14px;
+    color: var(--fg-0);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-search-aff {
+    font-size: 11px;
+    color: var(--fg-2);
+    margin-top: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-search-stat {
+    font-size: 11px;
+    color: var(--fg-2);
+    font-family: var(--font-mono);
+  }
+
+  /* Hide the original form elements completely on mobile — the overlay
+   * above is what the user interacts with. */
+  #singleSearchBox,
+  #pathFinderBox,
+  .mode-toggle,
+  .search-results,
+  .search-results.visible {
+    display: none !important;
+  }
+
+  body { padding-bottom: env(safe-area-inset-bottom); }
+}

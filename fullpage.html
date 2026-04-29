@@ -2,8 +2,19 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Author Network Explorer - Full View</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#16213e">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="Author Net">
+  <link rel="apple-touch-icon" href="icons/icon128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="mobile.css">
+  <script src="pwa-shim.js"></script>
   <script src="vis-network.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1831,6 +1842,9 @@
 </head>
 <body>
   <header>
+    <button class="mobile-icon-btn mobile-only" id="mobileMenuBtn" type="button" title="Menu" aria-label="Menu">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18v2H3zM3 11h18v2H3zM3 16h18v2H3z"/></svg>
+    </button>
     <div class="logo">
       <div class="logo-text">
         <div class="title-row">
@@ -1865,6 +1879,13 @@
       <button class="mode-btn active" id="singleModeBtn" title="Single author network">Single</button>
       <button class="mode-btn" id="pathModeBtn" title="Find path between two authors">Path Finder</button>
     </div>
+    <div class="mobile-only mobile-topbar-title" id="mobileTopbarTitle">
+      <div class="mobile-topbar-cluster mono" id="mobileTopbarCluster"></div>
+      <div class="mobile-topbar-name" id="mobileTopbarName">Author Network</div>
+    </div>
+    <button class="mobile-icon-btn mobile-only" id="mobileMoreBtn" type="button" title="More" aria-label="More" hidden>
+      <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="4" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="14" cy="9" r="1.5"/></svg>
+    </button>
   </header>
 
   <div class="tab-bar">
@@ -2165,7 +2186,101 @@
     </div><!-- End Fields Viewport -->
   </div>
 
+  <button class="mobile-only mobile-fab" id="mobileSearchBtn" type="button" title="Search" aria-label="Search">
+    <svg viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="12" y1="12" x2="15.5" y2="15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </button>
+
+  <!-- Mobile-only search overlay. Mirrors typing/results to/from the
+       existing #searchInput / #searchBtn / #searchResults so the real
+       fullpage.js search engine still drives everything. -->
+  <div class="mobile-only m-search-overlay" id="mobileSearchOverlay" hidden>
+    <div class="m-search-bar">
+      <button class="m-icon-btn" id="mSearchBack" type="button" aria-label="Close search">
+        <svg viewBox="0 0 18 18" aria-hidden="true">
+          <line x1="12" y1="4" x2="5" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+          <line x1="5" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </button>
+      <input class="m-search-input" id="mSearchInput" type="text"
+             placeholder="Search any researcher…" autocomplete="off" autocapitalize="off">
+    </div>
+    <div class="m-search-results" id="mSearchResults">
+      <div class="m-search-section-h mono" id="mSearchHeading">Type to search</div>
+      <div id="mSearchList"></div>
+    </div>
+  </div>
+
+  <!-- Mobile-only bottom sheet. Hidden on desktop via mobile.css.
+       Content is mirrored at runtime by mobile-ui.js from the existing
+       sidebar elements (real data populated by fullpage.js). -->
+  <div class="mobile-only m-sheet" id="mobileSheet" data-snap="peek">
+    <div class="m-sheet-handle" aria-label="Drag to resize"></div>
+    <div class="m-sheet-content">
+      <div class="m-peek" id="mPeek">
+        <div class="m-peek-name" id="mPeekName">Author Network</div>
+        <div class="m-peek-stats mono" id="mPeekStats" hidden>
+          <span id="mPeekPapers"></span>
+          <span class="m-peek-dot">·</span>
+          <span id="mPeekCites"></span>
+          <span class="m-peek-dot">·</span>
+          <span id="mPeekH"></span>
+        </div>
+      </div>
+
+      <div class="m-readout" id="mReadout">
+        <div class="m-tabs" id="mTabs">
+          <button class="m-tab active" data-mtab="authors" type="button">Authors</button>
+          <button class="m-tab" data-mtab="collections" type="button">Collections</button>
+          <button class="m-tab" data-mtab="fields" type="button">Fields</button>
+        </div>
+
+        <div class="m-ro-head">
+          <div class="m-ro-head-main">
+            <div class="m-ro-name" id="mRoName">Select an author</div>
+          </div>
+          <button class="m-ro-fav" id="mRoFav" type="button" title="Favorite" aria-label="Favorite">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3 L12.2 7.5 L17 8 L13.4 11.5 L14.5 16 L10 13.5 L5.5 16 L6.6 11.5 L3 8 L7.8 7.5 Z"
+                    stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="m-stats" id="mStats">
+          <div class="m-stat"><div class="m-stat-v mono" id="mStatPapers">—</div><div class="m-stat-l">papers</div></div>
+          <div class="m-stat"><div class="m-stat-v mono accent" id="mStatCites">—</div><div class="m-stat-l">citations</div></div>
+          <div class="m-stat"><div class="m-stat-v mono" id="mStatH">—</div><div class="m-stat-l">h-index</div></div>
+          <div class="m-stat"><div class="m-stat-v mono" id="mStatRetracted">—</div><div class="m-stat-l">retracted</div></div>
+        </div>
+
+        <div class="m-section" id="mSecPapers" hidden>
+          <div class="m-section-h"><span>Recent papers</span><span class="mono" id="mPapersCount">0</span></div>
+          <div id="mPapersList"></div>
+        </div>
+
+        <div class="m-section" id="mSecOther" hidden>
+          <div class="m-section-h"><span id="mOtherTitle">—</span></div>
+          <div id="mOtherList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="field-topology.js"></script>
   <script src="fullpage.js"></script>
+  <script src="mobile-ui.js" defer></script>
+  <script>
+    // Register the PWA service worker only when running outside the extension.
+    if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch((e) => {
+          console.warn('[pwa] service worker registration failed:', e);
+        });
+      });
+    }
+  </script>
 </body>
 </html>
