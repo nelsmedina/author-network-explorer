@@ -111,6 +111,16 @@
         toggleSearchOverlay();
       });
     }
+
+    const menuBtn = $('#mobileMenuBtn');
+    const leftPanel = $('#leftPanel');
+    if (menuBtn && leftPanel) {
+      menuBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        leftPanel.classList.toggle('expanded');
+        syncLeftPanelClass();
+      });
+    }
     // Close the search overlay on Escape or after submitting.
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') toggleSearchOverlay(false);

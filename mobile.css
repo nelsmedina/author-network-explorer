@@ -16,9 +16,22 @@
     min-height: 44px;
     flex-wrap: nowrap;
   }
-  header .logo-text { display: none; }
+  /* Keep the bird image, drop the textual title + subtitle */
+  header .logo-text .title-row h1 { display: none; }
+  header .logo-text .logo-subtitle { display: none; }
   header .logo .logo-icon { width: 28px; height: 28px; }
-  header .logo-subtitle { display: none; }
+  header .logo,
+  header .logo-text,
+  header .logo-text .title-row {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* The desktop edge-tab is replaced by the hamburger button on mobile */
+  .left-panel-toggle { display: none !important; }
 
   /* Hide the inline input forms in the header. We'll show the active one as
    * an overlay below the header when the user taps the search icon. */
@@ -28,11 +41,11 @@
   }
 
   /* When the body opts a panel in, surface it as a fixed overlay. */
-  body.mobile-search-open #singleSearchBox,
+  body.mobile-search-open #singleSearchBox[data-mode-active="true"],
   body.mobile-search-open #pathFinderBox[data-mode-active="true"] {
     display: flex !important;
     position: fixed;
-    top: calc(44px + env(safe-area-inset-top));
+    top: 44px;
     left: 0; right: 0;
     z-index: 30;
     padding: 8px 10px;
@@ -56,14 +69,31 @@
     flex: 0 0 auto;
   }
 
-  /* Mode toggle: shrink, push to right */
-  .mode-toggle {
-    margin-left: auto;
-    gap: 2px;
+  /* Hide the mode toggle from the header on mobile; surface it inside the
+   * search overlay below where the user is already looking. */
+  .mode-toggle { display: none; }
+  body.mobile-search-open .mode-toggle {
+    display: flex;
+    position: fixed;
+    top: 44px;
+    left: 0; right: 0;
+    z-index: 31;
+    margin: 0;
+    padding: 6px 10px;
+    background: #16213e;
+    border-bottom: 1px solid #1f2b4d;
+    gap: 6px;
+    justify-content: center;
   }
-  .mode-btn {
-    padding: 6px 8px;
-    font-size: 11px;
+  body.mobile-search-open .mode-btn {
+    flex: 1;
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+  /* Push the active input box below the mode toggle */
+  body.mobile-search-open #singleSearchBox[data-mode-active="true"],
+  body.mobile-search-open #pathFinderBox[data-mode-active="true"] {
+    top: 90px;
   }
 
   /* Mobile-only icon buttons in the header (added in fullpage.html) */
