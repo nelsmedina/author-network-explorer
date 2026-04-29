@@ -132,6 +132,20 @@
     display: none !important;
   }
 
+  /* Floating canvas chrome (legend, path legend, filter toggles, combine
+   * bar, network placeholder) — hidden on mobile to keep the graph clean.
+   * The underlying functionality (filter state, etc.) still lives in the
+   * DOM; we just don't surface the controls until we move them into a
+   * settings sheet. */
+  .legend,
+  .path-legend,
+  .filter-toggles,
+  .combine-bar,
+  .path-controls,
+  .network-placeholder {
+    display: none !important;
+  }
+
   /* ──────────────────── MAIN + GRAPH ──────────────────── */
   .main-content {
     min-height: 0;
@@ -491,6 +505,29 @@
     padding: 8px;
     font-size: 12px;
   }
+
+  /* Back arrow in the search overlay (added by mobile-ui.js) */
+  .mobile-search-back {
+    display: none;
+    position: fixed;
+    top: max(8px, env(safe-area-inset-top));
+    left: 8px;
+    z-index: 82;
+    width: 36px;
+    height: 36px;
+    border-radius: 4px;
+    background: transparent;
+    border: 0;
+    color: var(--fg-1);
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+  .mobile-search-back svg { width: 18px; height: 18px; }
+  body.mobile-search-open .mobile-search-back { display: inline-flex; }
+
+  /* Make room for the back arrow at the left of the mode-toggle row */
+  body.mobile-search-open .mode-toggle { padding-left: 52px; }
 
   body.mobile-search-open .search-results {
     position: fixed;

@@ -19,6 +19,21 @@
   const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
 
   // ──────────────── Search overlay ────────────────
+  function ensureSearchBackBtn() {
+    if ($('#mobileSearchBack')) return;
+    const btn = document.createElement('button');
+    btn.id = 'mobileSearchBack';
+    btn.className = 'mobile-only mobile-search-back';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Close search');
+    btn.innerHTML = '<svg viewBox="0 0 18 18" aria-hidden="true">' +
+      '<line x1="12" y1="4" x2="5" y2="9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+      '<line x1="5" y1="9" x2="12" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>' +
+      '</svg>';
+    btn.addEventListener('click', () => toggleSearchOverlay(false));
+    document.body.appendChild(btn);
+  }
+
   function toggleSearchOverlay(force) {
     const open = typeof force === 'boolean'
       ? force
@@ -33,6 +48,8 @@
       getComputedStyle(path).display !== 'none';
     const target = pathVisible ? path : single;
     if (target) target.setAttribute('data-mode-active', 'true');
+
+    ensureSearchBackBtn();
 
     if (open && target) {
       const input = target.querySelector('input');
@@ -78,47 +95,67 @@
     i = Math.max(0, Math.min(SNAP_ORDER.length - 1, i + dir));
     return SNAP_ORDER[i];
   }
+  function snapHeightPx(snap) {
+    if (snap === 'full') return Math.max(window.innerHeight - 60, 400);
+    return SNAP_HEIGHTS[snap] || 96;
+  }
+  function nearestSnap(px) {
+    const candidates = SNAP_ORDER.map((s) => ({ s, h: snapHeightPx(s) }));
+    candidates.sort((a, b) => Math.abs(a.h - px) - Math.abs(b.h - px));
+    return candidates[0].s;
+  }
+
   function wireSheet() {
     const sheet = $('#mobileSheet');
     if (!sheet) return;
     const handle = sheet.querySelector('.m-sheet-handle');
     if (!handle) return;
 
-    handle.addEventListener('click', () => {
-      if (!isMobile()) return;
-      if (handle.dataset.dragging === '1') {
-        delete handle.dataset.dragging;
-        return;
-      }
-      const cur = sheet.dataset.snap || 'peek';
-      const i = SNAP_ORDER.indexOf(cur);
-      const next = SNAP_ORDER[(i + 1) % SNAP_ORDER.length];
-      setSnap(next);
-    });
-
     let startY = null;
-    let startSnap = null;
+    let startH = null;
+    let dragged = false;
     function onStart(ev) {
       if (!isMobile()) return;
       const t = (ev.touches && ev.touches[0]) || ev;
       startY = t.clientY;
-      startSnap = sheet.dataset.snap || 'peek';
+      startH = sheet.getBoundingClientRect().height;
+      dragged = false;
+      sheet.style.transition = 'none';
     }
-    function onEnd(ev) {
+    function onMove(ev) {
       if (startY == null) return;
-      const t = (ev.changedTouches && ev.changedTouches[0]) || ev;
+      const t = (ev.touches && ev.touches[0]) || ev;
       const dy = startY - t.clientY;
-      if (Math.abs(dy) > 40) {
-        handle.dataset.dragging = '1';
-        const dir = dy > 0 ? +1 : -1;
-        setSnap(nextSnap(startSnap, dir));
-      }
-      startY = null;
-      startSnap = null;
+      const target = Math.max(60, Math.min(window.innerHeight - 40, startH + dy));
+      sheet.style.height = target + 'px';
+      if (Math.abs(dy) > 6) dragged = true;
+      if (ev.cancelable) ev.preventDefault();
+      updateFabPosition();
     }
-    handle.addEventListener('touchstart', onStart, { passive: true });
-    handle.addEventListener('touchend', onEnd);
+    function onEnd() {
+      if (startY == null) return;
+      const finalH = sheet.getBoundingClientRect().height;
+      sheet.style.transition = '';
+      sheet.style.height = '';
+      let snap;
+      if (dragged) {
+        snap = nearestSnap(finalH);
+      } else {
+        const cur = sheet.dataset.snap || 'peek';
+        snap = SNAP_ORDER[(SNAP_ORDER.indexOf(cur) + 1) % SNAP_ORDER.length];
+      }
+      setSnap(snap);
+      startY = null;
+      startH = null;
+    }
+
+    handle.addEventListener('touchstart', onStart, { passive: false });
+    handle.addEventListener('touchmove',  onMove,  { passive: false });
+    handle.addEventListener('touchend',   onEnd);
+    handle.addEventListener('touchcancel', onEnd);
+
     handle.addEventListener('mousedown', onStart);
+    document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onEnd);
   }
 
@@ -353,11 +390,9 @@
       if (!document.body.classList.contains('mobile-search-open')) return;
       const t = e.target;
       if (!t || !t.closest) return;
-      // Close the overlay when the user submits a search/find-path, OR when
-      // they tap a search-result row, OR a path-result row. Without this
-      // last branch the user gets stuck inside the overlay after picking a
-      // result.
-      if (t.closest('#searchBtn, #findPathBtn, .search-result, .path-result, .author-result')) {
+      // Close only when the user actually picks a result. Tapping the
+      // Search/Find-Path *button* must NOT close — results need to render.
+      if (t.closest('.search-result, .path-result, .author-result')) {
         setTimeout(() => toggleSearchOverlay(false), 0);
       }
     });
