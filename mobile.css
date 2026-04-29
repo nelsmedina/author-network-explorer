@@ -1,10 +1,13 @@
 /* mobile.css
- * Mobile redesign — calm modernist dark theme adopted from
- * Mobile Package/. Activates below 768px wide. Desktop styles untouched.
+ * Mobile redesign — calm modernist dark theme adopted 1:1 from
+ * Mobile Package/. Activates below 768px. Desktop styles unchanged.
  *
- * Visuals only: existing fullpage.html / fullpage.js skeleton stays intact
- * and is restyled in place. No DOM restructuring beyond the mobile-only
- * topbar title + FAB elements in fullpage.html.
+ * On mobile:
+ *   - Existing right-side .sidebar is hidden entirely.
+ *   - Existing top .tab-bar is hidden; tabs live inside the sheet.
+ *   - A new bottom sheet (id="mobileSheet") renders the prototype's layout.
+ *   - mobile-ui.js mirrors real data from #authorName/#paperCount/etc.
+ *     into the sheet — no mock data, fullpage.js keeps owning the state.
  */
 
 @media (max-width: 768px) {
@@ -54,24 +57,19 @@
     grid-template-columns: 36px 1fr 36px;
     grid-gap: 8px;
     align-items: center;
-    padding: 6px 12px 6px;
-    padding-top: max(6px, env(safe-area-inset-top));
+    padding: 4px 12px 8px;
+    padding-top: max(4px, env(safe-area-inset-top));
     background: var(--bg);
     border-bottom: var(--rule);
     min-height: 52px;
   }
 
-  /* Hide the desktop bird logo on mobile — the centered title stands in. */
   header .logo { display: none; }
-
-  /* The original inline forms are off-screen on mobile; the search FAB
-   * pulls them up as a fullscreen overlay. */
   .search-box,
   .path-finder-box {
     display: none !important;
   }
 
-  /* Center title block (mobile only) */
   .mobile-topbar-title {
     text-align: center;
     min-width: 0;
@@ -98,7 +96,6 @@
     line-height: 1.2;
   }
 
-  /* Header icon buttons */
   .mobile-only { display: none; }
   .mobile-icon-btn {
     width: 36px;
@@ -114,52 +111,26 @@
   }
   .mobile-icon-btn:active { background: var(--surf-1); }
   .mobile-icon-btn svg { width: 18px; height: 18px; }
-  .mobile-only { display: inline-flex; }
+
+  .mobile-only.mobile-icon-btn { display: inline-flex; }
   .mobile-topbar-title.mobile-only { display: block; }
+  .mobile-only.m-sheet { display: flex; }
+  .mobile-only.mobile-fab { display: inline-flex; }
 
-  /* Mode toggle: hidden by default; revealed inside the search overlay. */
   .mode-toggle { display: none; }
-
-  /* Hide the desktop edge tab — replaced by the hamburger button. */
   .left-panel-toggle { display: none !important; }
 
-  /* ──────────────────── TAB BAR ──────────────────── */
-  .tab-bar {
-    padding: 0 12px;
-    background: var(--bg);
-    border-bottom: var(--rule);
-    gap: 0;
-    overflow-x: auto;
+  /* ──────────────────── HIDE DESKTOP CHROME ──────────────────── */
+  /* Existing tab-bar lives inside the sheet on mobile. Hide the desktop one. */
+  .tab-bar { display: none !important; }
+
+  /* Existing right-side sidebars are replaced by the bottom sheet. */
+  #authorsViewport > .sidebar,
+  #collectionsViewport .collections-sidebar,
+  #fieldsViewport .fields-sidebar,
+  .sidebar {
+    display: none !important;
   }
-  .tab-btn {
-    position: relative;
-    padding: 10px 14px;
-    font-size: 12px;
-    color: var(--fg-2);
-    background: transparent;
-    border: 0;
-    border-radius: 0;
-    flex: 0 0 auto;
-  }
-  .tab-btn.active {
-    background: transparent;
-    color: var(--fg-0);
-  }
-  .tab-btn.active::after {
-    content: "";
-    position: absolute;
-    left: 0; right: 0; bottom: -1px;
-    height: 1px;
-    background: var(--accent);
-  }
-  .tab-btn[data-tab="authors"].active::after     { background: oklch(0.78 0.14 60); }
-  .tab-btn[data-tab="collections"].active::after { background: oklch(0.74 0.12 295); }
-  .tab-btn[data-tab="fields"].active::after      { background: oklch(0.74 0.14 145); }
-  .tab-btn[data-tab="authors"].active     { color: oklch(0.85 0.10 60); }
-  .tab-btn[data-tab="collections"].active { color: oklch(0.82 0.10 295); }
-  .tab-btn[data-tab="fields"].active      { color: oklch(0.82 0.10 145); }
-  .tab-label { display: none; }
-  .tab-icon-img { width: 14px; height: 14px; }
 
   /* ──────────────────── MAIN + GRAPH ──────────────────── */
   .main-content {
@@ -217,53 +188,54 @@
     color: var(--fg-2);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
     font-weight: 400;
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .left-panel .new-papers-section,
+  .left-panel .favorites-section-left,
+  .left-panel .collections-section {
+    padding: 14px 0;
+    border-bottom: var(--rule-soft);
+  }
+  .left-panel .new-papers-section:last-child,
+  .left-panel .favorites-section-left:last-child,
+  .left-panel .collections-section:last-child {
+    border-bottom: 0;
   }
 
-  /* ──────────────────── BOTTOM SHEET (.sidebar) ──────────────────── */
-  .sidebar,
-  #authorsViewport > .sidebar,
-  #collectionsViewport .collections-sidebar,
-  #fieldsViewport .fields-sidebar {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-    width: auto;
+  /* ──────────────────── BOTTOM SHEET ──────────────────── */
+  .m-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
     background: var(--surf-0);
     border-top: var(--rule);
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
-    z-index: 40;
-    padding: 0;
     transition: height 0.25s cubic-bezier(0.32, 0.72, 0, 1);
     display: flex;
     flex-direction: column;
     overflow: hidden;
-
-    /* Default snap = peek */
-    height: 96px;
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .sidebar[data-snap="peek"] { height: 96px; }
-  .sidebar[data-snap="half"] { height: 380px; }
-  .sidebar[data-snap="full"] { height: calc(100vh - 60px); height: calc(100dvh - 60px); }
+  .m-sheet[data-snap="peek"] { height: 96px; }
+  .m-sheet[data-snap="half"] { height: 380px; }
+  .m-sheet[data-snap="full"] { height: calc(100vh - 60px); height: calc(100dvh - 60px); }
 
-  /* Hide the original padding so we can supply our own that includes the
-   * handle space. */
-  .sidebar > * {
-    padding-left: 16px;
-    padding-right: 16px;
-  }
-  .sidebar > .mobile-sheet-handle {
-    position: relative;
+  .m-sheet-handle {
     flex-shrink: 0;
     width: 100%;
     height: 16px;
-    margin: 0;
-    padding: 0;
     cursor: grab;
     touch-action: none;
+    position: relative;
   }
-  .sidebar > .mobile-sheet-handle::before {
+  .m-sheet-handle::before {
     content: "";
     position: absolute;
     top: 8px;
@@ -275,66 +247,146 @@
     border-radius: 2px;
   }
 
-  /* The actual scroll area inside the sheet */
-  .sidebar {
+  .m-sheet-content {
+    flex: 1;
     overflow-y: auto;
+    padding: 4px 16px 24px;
   }
-  .sidebar > .mobile-sheet-handle { position: sticky; top: 0; background: var(--surf-0); z-index: 2; }
 
-  /* ──────────────────── SHEET CONTENT (existing fullpage.js classes) ──────────────────── */
-  .sidebar h2 {
-    font-size: 10px;
+  /* Peek state: only show the peek block; hide the readout. */
+  .m-sheet[data-snap="peek"] .m-readout { display: none; }
+  .m-sheet:not([data-snap="peek"]) .m-peek { display: none; }
+
+  .m-peek { padding: 4px 0; }
+  .m-peek-name {
+    font-size: 16px;
+    color: var(--fg-0);
+    font-weight: 500;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .m-peek-stats {
+    font-size: 11px;
     color: var(--fg-2);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    margin: 14px 0 10px;
-    font-weight: 400;
+    display: flex;
+    gap: 8px;
   }
-  .author-header {
-    margin-bottom: 14px;
+  .m-peek-dot { color: var(--fg-4); }
+
+  /* Readout */
+  .m-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0 12px;
+    margin-bottom: 4px;
+    border-bottom: var(--rule);
   }
-  .author-name,
-  .sidebar h3 {
+  .m-tab {
+    flex: 1;
+    padding: 8px 0;
+    font-size: 12px;
+    color: var(--fg-2);
+    border-radius: 4px;
+    background: transparent;
+    border: 0;
+  }
+  .m-tab.active {
+    color: var(--fg-0);
+    background: var(--surf-1);
+  }
+
+  .m-ro-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-top: 4px;
+  }
+  .m-ro-head-main { min-width: 0; flex: 1; }
+  .m-ro-name {
     font-size: 22px;
     font-weight: 500;
     letter-spacing: -0.01em;
     line-height: 1.15;
     color: var(--fg-0);
+    word-wrap: break-word;
   }
-  .stat-value {
-    font-family: var(--font-mono);
+  .m-ro-fav {
+    color: var(--fg-3);
+    padding: 4px;
+    background: transparent;
+    border: 0;
+  }
+  .m-ro-fav:active,
+  .m-ro-fav.active { color: var(--accent); }
+
+  .m-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    gap: 8px;
+    margin: 14px 0 18px;
+  }
+  .m-stat {
+    background: var(--surf-1);
+    padding: 10px 8px;
+    border-radius: 4px;
+    text-align: left;
+  }
+  .m-stat-v {
     font-size: 18px;
-    font-weight: 400;
     color: var(--fg-0);
     letter-spacing: -0.02em;
+    line-height: 1;
   }
-  .papers-panel,
-  .papers-list {
-    max-height: none;
+  .m-stat-v.accent { color: var(--accent); }
+  .m-stat-l {
+    font-size: 9px;
+    color: var(--fg-2);
+    margin-top: 4px;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
   }
-  .paper-item {
-    background: transparent;
-    border-radius: 0;
-    border-bottom: var(--rule-soft);
+
+  .m-section { margin-bottom: 20px; }
+  .m-section-h {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 10px;
+    color: var(--fg-2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  .m-paper {
     padding: 10px 0;
-    margin-bottom: 0;
+    border-bottom: var(--rule-soft);
   }
-  .paper-title {
+  .m-paper:last-child { border-bottom: 0; }
+  .m-paper-title {
     font-size: 12px;
     color: var(--fg-1);
     line-height: 1.4;
+    margin-bottom: 4px;
+    text-decoration: none;
+    display: block;
   }
-  .paper-meta {
-    font-family: var(--font-mono);
+  .m-paper-meta {
+    display: flex;
+    gap: 5px;
     font-size: 9px;
     color: var(--fg-3);
+    font-family: var(--font-mono);
   }
 
-  /* ──────────────────── FAB (floating search) ──────────────────── */
+  /* ──────────────────── FAB ──────────────────── */
   .mobile-fab {
     position: fixed;
     right: 16px;
-    bottom: 112px; /* peek-height + margin; mobile-ui.js updates this */
+    bottom: 112px;
     z-index: 50;
     width: 48px;
     height: 48px;
@@ -343,7 +395,6 @@
     border: 1px solid var(--accent-dim);
     color: var(--accent);
     box-shadow: 0 6px 20px rgba(0,0,0,0.5), 0 0 0 1px oklch(0.78 0.14 60 / 0.15);
-    display: inline-flex;
     align-items: center;
     justify-content: center;
     transition: bottom 0.25s, opacity 0.2s;
@@ -365,23 +416,21 @@
     z-index: 80;
   }
 
-  /* Container for the active search/path-finder form, plus mode toggle */
   body.mobile-search-open .mode-toggle,
   body.mobile-search-open #singleSearchBox[data-mode-active="true"],
   body.mobile-search-open #pathFinderBox[data-mode-active="true"] {
     position: fixed;
     left: 0; right: 0;
     z-index: 81;
-    padding: 12px;
     background: var(--bg);
   }
 
   body.mobile-search-open .mode-toggle {
     display: flex;
     top: max(12px, env(safe-area-inset-top));
+    padding: calc(12px + env(safe-area-inset-top)) 12px 12px;
     gap: 6px;
     border-bottom: var(--rule);
-    padding-top: calc(12px + env(safe-area-inset-top));
   }
   body.mobile-search-open .mode-btn {
     flex: 1;
@@ -404,6 +453,7 @@
     top: calc(60px + env(safe-area-inset-top));
     flex-wrap: wrap;
     gap: 8px;
+    padding: 12px;
     border-bottom: var(--rule);
   }
   body.mobile-search-open #singleSearchBox input,
@@ -442,7 +492,6 @@
     font-size: 12px;
   }
 
-  /* Search results dropdown — pull it under the inputs */
   body.mobile-search-open .search-results {
     position: fixed;
     top: calc(120px + env(safe-area-inset-top));
@@ -453,14 +502,6 @@
     padding: 8px 0;
     max-height: none;
     border-radius: 0;
-  }
-
-  /* ──────────────────── MISC ──────────────────── */
-  .paper-detail-panel {
-    width: 100vw !important;
-    height: 100vh !important;
-    max-width: none !important;
-    border-radius: 0 !important;
   }
 
   body { padding-bottom: env(safe-area-inset-bottom); }

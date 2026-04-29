@@ -2193,6 +2193,62 @@
     </svg>
   </button>
 
+  <!-- Mobile-only bottom sheet. Hidden on desktop via mobile.css.
+       Content is mirrored at runtime by mobile-ui.js from the existing
+       sidebar elements (real data populated by fullpage.js). -->
+  <div class="mobile-only m-sheet" id="mobileSheet" data-snap="peek">
+    <div class="m-sheet-handle" aria-label="Drag to resize"></div>
+    <div class="m-sheet-content">
+      <div class="m-peek" id="mPeek">
+        <div class="m-peek-name" id="mPeekName">Author Network</div>
+        <div class="m-peek-stats mono" id="mPeekStats" hidden>
+          <span id="mPeekPapers"></span>
+          <span class="m-peek-dot">·</span>
+          <span id="mPeekCites"></span>
+          <span class="m-peek-dot">·</span>
+          <span id="mPeekH"></span>
+        </div>
+      </div>
+
+      <div class="m-readout" id="mReadout">
+        <div class="m-tabs" id="mTabs">
+          <button class="m-tab active" data-mtab="authors" type="button">Authors</button>
+          <button class="m-tab" data-mtab="collections" type="button">Collections</button>
+          <button class="m-tab" data-mtab="fields" type="button">Fields</button>
+        </div>
+
+        <div class="m-ro-head">
+          <div class="m-ro-head-main">
+            <div class="m-ro-name" id="mRoName">Select an author</div>
+          </div>
+          <button class="m-ro-fav" id="mRoFav" type="button" title="Favorite" aria-label="Favorite">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M10 3 L12.2 7.5 L17 8 L13.4 11.5 L14.5 16 L10 13.5 L5.5 16 L6.6 11.5 L3 8 L7.8 7.5 Z"
+                    stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+            </svg>
+          </button>
+        </div>
+
+        <div class="m-stats" id="mStats">
+          <div class="m-stat"><div class="m-stat-v mono" id="mStatPapers">—</div><div class="m-stat-l">papers</div></div>
+          <div class="m-stat"><div class="m-stat-v mono accent" id="mStatCites">—</div><div class="m-stat-l">citations</div></div>
+          <div class="m-stat"><div class="m-stat-v mono" id="mStatH">—</div><div class="m-stat-l">h-index</div></div>
+          <div class="m-stat"><div class="m-stat-v mono" id="mStatRetracted">—</div><div class="m-stat-l">retracted</div></div>
+        </div>
+
+        <div class="m-section" id="mSecPapers" hidden>
+          <div class="m-section-h"><span>Recent papers</span><span class="mono" id="mPapersCount">0</span></div>
+          <div id="mPapersList"></div>
+        </div>
+
+        <div class="m-section" id="mSecOther" hidden>
+          <div class="m-section-h"><span id="mOtherTitle">—</span></div>
+          <div id="mOtherList"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="field-topology.js"></script>
   <script src="fullpage.js"></script>
   <script src="mobile-ui.js" defer></script>
