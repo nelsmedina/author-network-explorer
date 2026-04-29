@@ -10,6 +10,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <meta name="apple-mobile-web-app-title" content="Author Net">
   <link rel="apple-touch-icon" href="icons/icon128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="mobile.css">
   <script src="pwa-shim.js"></script>
   <script src="vis-network.min.js"></script>
@@ -1876,8 +1879,12 @@
       <button class="mode-btn active" id="singleModeBtn" title="Single author network">Single</button>
       <button class="mode-btn" id="pathModeBtn" title="Find path between two authors">Path Finder</button>
     </div>
-    <button class="mobile-icon-btn mobile-only" id="mobileSearchBtn" type="button" title="Search" aria-label="Search">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 2a8 8 0 105.293 14.293l4.207 4.207 1.414-1.414-4.207-4.207A8 8 0 0010 2zm0 2a6 6 0 110 12 6 6 0 010-12z"/></svg>
+    <div class="mobile-only mobile-topbar-title" id="mobileTopbarTitle">
+      <div class="mobile-topbar-cluster mono" id="mobileTopbarCluster"></div>
+      <div class="mobile-topbar-name" id="mobileTopbarName">Author Network</div>
+    </div>
+    <button class="mobile-icon-btn mobile-only" id="mobileMoreBtn" type="button" title="More" aria-label="More" hidden>
+      <svg viewBox="0 0 18 18" aria-hidden="true"><circle cx="4" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/><circle cx="14" cy="9" r="1.5"/></svg>
     </button>
   </header>
 
@@ -2178,6 +2185,13 @@
       </div>
     </div><!-- End Fields Viewport -->
   </div>
+
+  <button class="mobile-only mobile-fab" id="mobileSearchBtn" type="button" title="Search" aria-label="Search">
+    <svg viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="8" cy="8" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/>
+      <line x1="12" y1="12" x2="15.5" y2="15.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+    </svg>
+  </button>
 
   <script src="field-topology.js"></script>
   <script src="fullpage.js"></script>
