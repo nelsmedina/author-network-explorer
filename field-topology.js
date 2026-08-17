@@ -59,6 +59,16 @@ class FieldTopologyVisualizer {
       }
     });
 
+    this.network.on('click', (params) => {
+      if (params.nodes.length > 0) {
+        this.onNodeClick(params.nodes[0]);
+      } else {
+        // Clicked empty space — hide panel
+        const panel = document.getElementById('fieldPaperDetailPanel');
+        if (panel) panel.style.display = 'none';
+      }
+    });
+
     this.network.on('doubleClick', (params) => {
       if (params.nodes.length > 0) {
         this.onNodeDoubleClick(params.nodes[0]);
@@ -84,16 +94,16 @@ class FieldTopologyVisualizer {
     `;
 
     const modes = [
-      { id: 'clusters', label: 'Concept Map', icon: '🗺️' },
-      { id: 'papers', label: 'Paper Network', icon: '📄' },
-      { id: 'authors', label: 'Authors', icon: '👤' }
+      { id: 'clusters', label: 'Concept Map' },
+      { id: 'papers', label: 'Paper Network' },
+      { id: 'authors', label: 'Authors' }
     ];
 
     modes.forEach(mode => {
       const btn = document.createElement('button');
       btn.className = `field-view-btn ${mode.id === this.viewMode ? 'active' : ''}`;
       btn.dataset.mode = mode.id;
-      btn.innerHTML = `${mode.icon} ${mode.label}`;
+      btn.textContent = mode.label;
       btn.style.cssText = `
         padding: 6px 12px;
         background: ${mode.id === this.viewMode ? '#4ecca3' : '#1a1a2e'};
@@ -124,6 +134,9 @@ class FieldTopologyVisualizer {
 
   setViewMode(mode) {
     this.viewMode = mode;
+    // Hide paper detail panel when switching views
+    const panel = document.getElementById('fieldPaperDetailPanel');
+    if (panel) panel.style.display = 'none';
     if (this.currentWorks.length > 0) {
       this.buildVisualization();
     }
@@ -325,7 +338,7 @@ class FieldTopologyVisualizer {
       this.nodes.add({
         id: cluster.id,
         label: this.truncate(cluster.name, 20),
-        title: `${cluster.name}\n${cluster.papers.length} papers\n${cluster.recentPapers} recent (3yr)\nAvg citations: ${cluster.avgCitations.toFixed(1)}${isHiddenGem ? '\n⭐ Potential hidden gem area!' : ''}`,
+        title: `${cluster.name}\n${cluster.papers.length} papers\n${cluster.recentPapers} recent (3yr)\nAvg citations: ${cluster.avgCitations.toFixed(1)}${isHiddenGem ? '\n*Potential hidden gem area!' : ''}`,
         size: size,
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius,
@@ -411,7 +424,7 @@ class FieldTopologyVisualizer {
       this.nodes.add({
         id: paper.id,
         label: this.truncate(paper.display_name, 18),
-        title: `⭐ KEYSTONE: ${paper.display_name}\n${paper.publication_year || 'N/A'}\n${citations} citations\nCluster: ${paper.clusterName}`,
+        title: `*KEYSTONE: ${paper.display_name}\n${paper.publication_year || 'N/A'}\n${citations} citations\nCluster: ${paper.clusterName}`,
         size: 20 + Math.min(citations / 50, 15),
         x: Math.cos(angle) * keystoneRadius,
         y: Math.sin(angle) * keystoneRadius,
@@ -466,8 +479,8 @@ class FieldTopologyVisualizer {
 
       this.nodes.add({
         id: paper.id,
-        label: isHiddenGem ? '⭐ ' + this.truncate(paper.display_name, 15) : this.truncate(paper.display_name, 15),
-        title: `${paper.display_name}\n${year}\n${citations} citations${isHiddenGem ? '\n⭐ Hidden gem candidate!' : ''}`,
+        label: isHiddenGem ? '*' + this.truncate(paper.display_name, 15) : this.truncate(paper.display_name, 15),
+        title: `${paper.display_name}\n${year}\n${citations} citations${isHiddenGem ? '\n*Hidden gem candidate!' : ''}`,
         size: 8 + Math.min(citations / 20, 12),
         x: Math.cos(spreadAngle) * distance,
         y: Math.sin(spreadAngle) * distance,
@@ -568,7 +581,7 @@ class FieldTopologyVisualizer {
       this.nodes.add({
         id: author.id,
         label: this.truncate(author.name, 16),
-        title: `${author.name}\n${author.papers.length} papers\n${author.totalCitations} total citations\n${author.recentPapers} recent papers\nNiche score: ${author.nicheScore.toFixed(2)}${isHiddenGem ? '\n⭐ Hidden gem researcher!' : ''}`,
+        title: `${author.name}\n${author.papers.length} papers\n${author.totalCitations} total citations\n${author.recentPapers} recent papers\nNiche score: ${author.nicheScore.toFixed(2)}${isHiddenGem ? '\n*Hidden gem researcher!' : ''}`,
         size: size,
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius,
@@ -683,6 +696,92 @@ class FieldTopologyVisualizer {
 
     legend.innerHTML = legends[type] || '';
     this.container.appendChild(legend);
+  }
+
+  onNodeClick(nodeId) {
+    // Only show paper details in paper network view
+    if (this.viewMode !== 'papers') return;
+
+    const panel = document.getElementById('fieldPaperDetailPanel');
+    const content = document.getElementById('fieldPaperDetailContent');
+    if (!panel || !content) return;
+
+    // Find the paper in currentWorks or keystonePapers
+    let paper = this.currentWorks.find(w => w.id === nodeId);
+    if (!paper) paper = this.keystonePapers.find(w => w.id === nodeId);
+    if (!paper) return;
+
+    const title = paper.display_name || 'Untitled';
+    const year = paper.publication_year || 'N/A';
+    const citations = paper.cited_by_count || 0;
+    const doi = paper.doi;
+    const authors = (paper.authorships || [])
+      .map(a => a.author?.display_name)
+      .filter(Boolean)
+      .slice(0, 8);
+    const authorStr = authors.join(', ') + (paper.authorships?.length > 8 ? ' ...' : '');
+
+    content.innerHTML = `
+      <div class="paper-detail-title">
+        <a href="${doi || '#'}" target="_blank">${title}</a>
+      </div>
+      <div class="paper-detail-meta">
+        ${year} · ${citations} citations
+      </div>
+      <div class="paper-detail-authors">${authorStr}</div>
+      <div style="margin-top: 8px;">
+        <button id="fieldAddToCollectionBtn" style="
+          background: none; border: 1px solid #9b59b6; border-radius: 4px;
+          padding: 4px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+          color: #ccc; font-size: 11px; transition: all 0.2s;
+        ">
+          <img src="icons/ane-collection-icon.svg" style="width:14px;height:14px;">
+          Add to Quick Collection
+        </button>
+      </div>
+    `;
+
+    // Wire up the add-to-collection button
+    const addBtn = document.getElementById('fieldAddToCollectionBtn');
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        const normalizedPaper = {
+          workId: paper.id?.replace('https://openalex.org/', '') || '',
+          doi: doi ? doi.replace('https://doi.org/', '') : null,
+          title: title,
+          year: paper.publication_year || null,
+          citationCount: citations,
+          authors: (paper.authorships || []).map(a => ({
+            name: a.author?.display_name || '',
+            id: a.author?.id || ''
+          })),
+          concepts: (paper.concepts || []).map(c => ({
+            name: c.display_name || '',
+            id: c.id || ''
+          })),
+          references: paper.referenced_works || []
+        };
+        if (typeof addPaperToQuickCollection === 'function') {
+          addPaperToQuickCollection(normalizedPaper);
+        }
+        addBtn.innerHTML = '<span style="color: #22c55e;">Added</span>';
+        addBtn.style.borderColor = '#22c55e';
+        addBtn.disabled = true;
+      });
+
+      addBtn.addEventListener('mouseenter', () => {
+        addBtn.style.borderColor = '#4ecca3';
+        addBtn.style.color = '#4ecca3';
+      });
+      addBtn.addEventListener('mouseleave', () => {
+        if (!addBtn.disabled) {
+          addBtn.style.borderColor = '#9b59b6';
+          addBtn.style.color = '#ccc';
+        }
+      });
+    }
+
+    panel.style.display = 'block';
   }
 
   onNodeDoubleClick(nodeId) {
