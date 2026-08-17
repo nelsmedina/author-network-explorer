@@ -1,0 +1,20 @@
+# Never commit credentials. The OpenAlex API key belongs in the extension's
+# settings page (chrome.storage.sync), not in any file in this repo.
+config.js
+config.local.js
+*.local.js
+secrets.json
+*.key
+.env
+.env.*
+ANE_API_KEY/
+
+# Build / packaging output
+*.zip
+*.crx
+*.pem
+
+# OS cruft
+.DS_Store
+._*
+Thumbs.db

@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>A.N.E Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="wrap">
+    <header class="head">
+      <img src="icons/logo-bird.png" alt="" class="logo">
+      <div>
+        <h1>A.N.E</h1>
+        <p class="sub">Author Network Explorer</p>
+      </div>
+    </header>
+
+    <!-- Shown on first install; hidden once a key is saved. -->
+    <section id="welcome" class="card welcome hidden">
+      <h2>One-time setup</h2>
+      <p>
+        A.N.E reads publication data from <strong>OpenAlex</strong>, a free and open
+        catalogue of scholarly work. Since February 2026 OpenAlex requires every
+        request to carry an API key, so you'll need your own.
+      </p>
+      <p class="muted">
+        It's free, takes about 30 seconds, and includes a daily usage budget that is
+        far more than normal browsing needs.
+      </p>
+    </section>
+
+    <section class="card">
+      <h2>Your OpenAlex API key</h2>
+
+      <ol class="steps">
+        <li>
+          Create a free OpenAlex account and copy your key.
+          <div>
+            <button id="getKeyBtn" class="btn btn-secondary" type="button">
+              Get my free key &#8599;
+            </button>
+          </div>
+        </li>
+        <li>
+          Paste it here and save.
+          <div class="key-row">
+            <input
+              id="keyInput"
+              type="password"
+              class="key-input"
+              placeholder="Paste your OpenAlex API key"
+              autocomplete="off"
+              spellcheck="false">
+            <button id="revealBtn" class="btn btn-ghost" type="button" aria-label="Show or hide key">Show</button>
+          </div>
+          <div class="actions">
+            <button id="saveBtn" class="btn btn-primary" type="button">Save key</button>
+            <button id="testBtn" class="btn btn-secondary" type="button">Test without saving</button>
+            <button id="clearBtn" class="btn btn-ghost hidden" type="button">Remove saved key</button>
+          </div>
+        </li>
+      </ol>
+
+      <p id="status" class="status" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="card">
+      <h2>Where your key is stored</h2>
+      <p class="muted">
+        Your key is saved in Chrome's own extension storage on your computer and
+        synced to your other Chrome profiles if you have Chrome sync switched on.
+        It is sent only to <code>api.openalex.org</code>, and never to us or to
+        anyone else. Nothing about your key is stored in the extension's files.
+      </p>
+      <p class="muted">
+        If your key ever leaks, rotate it from your OpenAlex settings &mdash; that
+        invalidates the old one immediately &mdash; then paste the new one here.
+      </p>
+    </section>
+  </main>
+
+  <script src="ane-key.js"></script>
+  <script src="options.js"></script>
+</body>
+</html>

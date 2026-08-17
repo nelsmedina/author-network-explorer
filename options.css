@@ -1,0 +1,207 @@
+/* Settings page for Author Network Explorer.
+   Kept separate from styles.css, which fixes a 700x600 popup viewport. */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #1a1a2e;
+  color: #eee;
+  line-height: 1.5;
+  padding: 32px 20px 48px;
+}
+
+.wrap {
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+h1 {
+  font-size: 24px;
+  letter-spacing: 1px;
+}
+
+.sub {
+  font-size: 13px;
+  color: #888;
+}
+
+h2 {
+  font-size: 15px;
+  color: #4ecca3;
+  margin-bottom: 10px;
+}
+
+.card {
+  background: #16213e;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.welcome {
+  border-left: 3px solid #4ecca3;
+}
+
+.card p + p {
+  margin-top: 10px;
+}
+
+.muted {
+  color: #9aa3b8;
+  font-size: 13px;
+}
+
+code {
+  background: #0f0f1a;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.steps {
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps > li {
+  counter-increment: step;
+  position: relative;
+  padding-left: 34px;
+  margin-bottom: 18px;
+}
+
+.steps > li:last-child {
+  margin-bottom: 0;
+}
+
+.steps > li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #4ecca3;
+  color: #1a1a2e;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.steps > li > div {
+  margin-top: 10px;
+}
+
+.key-row {
+  display: flex;
+  gap: 8px;
+}
+
+.key-input {
+  flex: 1;
+  background: #0f0f1a;
+  color: #fff;
+  border: 1px solid #2a3556;
+  border-radius: 6px;
+  padding: 9px 11px;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.key-input:focus {
+  outline: none;
+  border-color: #4ecca3;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.btn {
+  border: none;
+  border-radius: 6px;
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btn-primary {
+  background: #4ecca3;
+  color: #1a1a2e;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #3db892;
+}
+
+.btn-secondary {
+  background: #1f2b4d;
+  color: #eee;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #2a3766;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #9aa3b8;
+  border: 1px solid #2a3556;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  color: #eee;
+  border-color: #4a5680;
+}
+
+.status {
+  margin-top: 14px;
+  font-size: 13px;
+  min-height: 20px;
+}
+
+.status.ok {
+  color: #4ecca3;
+}
+
+.status.err {
+  color: #ff6b6b;
+}
+
+.status.busy {
+  color: #9aa3b8;
+}
+
+.hidden {
+  display: none;
+}

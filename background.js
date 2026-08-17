@@ -1,31 +1,20 @@
 // Background service worker for Author Network Explorer
 // Checks favorited authors for new papers daily using OpenAlex API
 
-const OPENALEX_BASE = 'https://api.openalex.org';
-const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
+// Shared key storage + the fetch wrapper that authenticates OpenAlex calls.
+importScripts('ane-key.js');
 
-// Fetch wrapper for API rate limit tracking + user notification
-const _originalFetch = fetch;
-fetch = async function(...args) {
-  const response = await _originalFetch(...args);
-  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
-  if (url && url.includes('api.openalex.org')) {
-    const remaining = response.headers.get('x-ratelimit-remaining');
-    if (remaining !== null) {
-      const rateLimitData = {
-        limit: parseInt(response.headers.get('x-ratelimit-limit')) || 0,
-        remaining: parseInt(remaining) || 0,
-        reset: response.headers.get('x-ratelimit-reset') || null,
-        lastUpdated: Date.now()
-      };
-      chrome.storage.local.set({ rateLimitData });
-      if (rateLimitData.remaining <= 0) {
-        notifyUserLimitReached(rateLimitData);
-      }
+const OPENALEX_BASE = 'https://api.openalex.org';
+
+// Authenticate OpenAlex requests and track the remaining daily budget.
+ANE.installFetch({
+  onRateLimit: (rateLimitData) => {
+    chrome.storage.local.set({ rateLimitData });
+    if (rateLimitData.remaining <= 0) {
+      notifyUserLimitReached(rateLimitData);
     }
   }
-  return response;
-};
+});
 const ALARM_NAME = 'checkFavorites';
 const CHECK_INTERVAL_MINUTES = 60 * 24; // Once per day
 
@@ -45,7 +34,7 @@ function notifyUserLimitReached(rateLimitData) {
 }
 
 // Set up alarm on install
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener(async (details) => {
   // Create daily alarm
   chrome.alarms.create(ALARM_NAME, {
     delayInMinutes: 1, // First check 1 minute after install
@@ -54,6 +43,13 @@ chrome.runtime.onInstalled.addListener(() => {
 
   // Run migration check for old favorites format
   migrateFavoritesIfNeeded();
+
+  // OpenAlex requires an API key, so send new users straight to setup. Also
+  // covers upgrades from 1.0, which shipped a shared key and so left users
+  // without one of their own.
+  if ((details.reason === 'install' || details.reason === 'update') && !(await ANE.hasKey())) {
+    chrome.runtime.openOptionsPage();
+  }
 });
 
 // Also set up alarm on startup (in case extension was updated)
@@ -102,7 +98,7 @@ async function migrateFavoritesIfNeeded() {
 
         // Try to find author in OpenAlex by name
         try {
-          const searchUrl = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(fav.name)}&per_page=5`;
+          const searchUrl = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(fav.name)}&per_page=5`;
           const response = await fetch(searchUrl);
 
           if (response.ok) {
@@ -175,7 +171,7 @@ async function checkFavoritesForUpdates() {
         if (fav.needsResolution) continue;
 
         // Get author details from OpenAlex
-        const authorUrl = `${OPENALEX_BASE}/authors/${fav.authorId}?api_key=${OPENALEX_API_KEY}`;
+        const authorUrl = `${OPENALEX_BASE}/authors/${fav.authorId}`;
         const authorResponse = await fetch(authorUrl);
 
         if (!authorResponse.ok) {
@@ -189,7 +185,7 @@ async function checkFavoritesForUpdates() {
           const newCount = currentPaperCount - (fav.lastPaperCount || 0);
 
           // Get recent works
-          const worksUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${fav.authorId}&sort=publication_year:desc&per_page=${Math.min(newCount + 5, 25)}`;
+          const worksUrl = `${OPENALEX_BASE}/works?filter=author.id:${fav.authorId}&sort=publication_year:desc&per_page=${Math.min(newCount + 5, 25)}`;
           const worksResponse = await fetch(worksUrl);
 
           let newPapers = [];
@@ -306,7 +302,7 @@ async function addPaperFromContentScript(paperInfo) {
     let fullPaper = null;
     if (paperInfo.title) {
       try {
-        const searchUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(paperInfo.title)}&per_page=5`;
+        const searchUrl = `${OPENALEX_BASE}/works?search=${encodeURIComponent(paperInfo.title)}&per_page=5`;
         const response = await fetch(searchUrl);
 
         if (response.ok) {
@@ -376,17 +372,15 @@ async function addPaperFromContentScript(paperInfo) {
   }
 }
 
-// Fetch from OpenAlex API
+// Fetch from OpenAlex API. The user's key is attached by the wrapper in ane-key.js.
 async function fetchOpenAlex(endpoint) {
   const url = endpoint.startsWith('http') ? endpoint : `${OPENALEX_BASE}${endpoint}`;
-  const separator = url.includes('?') ? '&' : '?';
-  const fullUrl = `${url}${separator}api_key=${OPENALEX_API_KEY}`;
 
-  const response = await fetch(fullUrl, {
-    headers: {
-      'User-Agent': 'AuthorNetworkExplorer/1.0 (Chrome Extension)'
-    }
-  });
+  if (!(await ANE.hasKey())) {
+    throw new Error('No OpenAlex API key configured. Open A.N.E settings to add one.');
+  }
+
+  const response = await fetch(url);
 
   if (!response.ok) {
     throw new Error(`OpenAlex API error: ${response.status}`);

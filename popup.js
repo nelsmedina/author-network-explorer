@@ -1,25 +1,10 @@
 // OpenAlex API for Author Network Explorer popup
 const OPENALEX_BASE = 'https://api.openalex.org';
-const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
 
-// Fetch wrapper for API rate limit tracking
-const _originalFetch = fetch;
-fetch = async function(...args) {
-  const response = await _originalFetch(...args);
-  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
-  if (url && url.includes('api.openalex.org')) {
-    const remaining = response.headers.get('x-ratelimit-remaining');
-    if (remaining !== null) {
-      chrome.storage.local.set({ rateLimitData: {
-        limit: parseInt(response.headers.get('x-ratelimit-limit')) || 0,
-        remaining: parseInt(remaining) || 0,
-        reset: response.headers.get('x-ratelimit-reset') || null,
-        lastUpdated: Date.now()
-      }});
-    }
-  }
-  return response;
-};
+// Authenticate OpenAlex requests (key from ane-key.js) and track daily budget.
+ANE.installFetch({
+  onRateLimit: (rateLimitData) => chrome.storage.local.set({ rateLimitData })
+});
 
 // State
 let network = null;
@@ -142,7 +127,7 @@ async function searchAuthors(query) {
 
   try {
     // OpenAlex direct author search
-    const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=${limit}`;
+    const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(query)}&per_page=${limit}`;
 
     const response = await fetch(url);
 
@@ -288,7 +273,7 @@ async function loadAuthorNetwork(authorId) {
     // Get author details if not cached
     let author = authorCache.get(cleanId);
     if (!author || !author.hIndex) {
-      const authorUrl = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+      const authorUrl = `${OPENALEX_BASE}/authors/${cleanId}`;
       const authorResponse = await fetch(authorUrl);
       const authorData = await authorResponse.json();
       author = normalizeAuthor(authorData);
@@ -296,7 +281,7 @@ async function loadAuthorNetwork(authorId) {
     }
 
     // Fetch works by this author
-    const worksUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
+    const worksUrl = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
     const worksResponse = await fetch(worksUrl);
     const worksData = await worksResponse.json();
     const works = worksData.results || [];
@@ -328,7 +313,7 @@ async function loadCombinedAuthorNetwork(authorIds, authorNames) {
     // Fetch papers from all author profiles in parallel
     const paperPromises = authorIds.map(authorId => {
       const cleanId = authorId.replace('https://openalex.org/', '');
-      const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100`;
+      const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=100`;
       return fetch(url).then(r => r.json()).then(d => d.results || []);
     });
 
@@ -685,7 +670,7 @@ async function expandNetwork(authorId) {
 
   try {
     const cleanId = authorId.replace('https://openalex.org/', '');
-    const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=50`;
+    const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=50`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -755,7 +740,7 @@ async function selectAuthor(authorId) {
   if (!author || author.paperCount === null) {
     try {
       const cleanId = authorId.replace('https://openalex.org/', '');
-      const url = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+      const url = `${OPENALEX_BASE}/authors/${cleanId}`;
 
       const response = await fetch(url);
       const data = await response.json();

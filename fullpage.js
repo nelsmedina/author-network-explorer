@@ -1,25 +1,10 @@
 // OpenAlex API for Author Network Explorer fullpage
 const OPENALEX_BASE = 'https://api.openalex.org';
-const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
 
-// Fetch wrapper for API rate limit tracking
-const _originalFetch = fetch;
-fetch = async function(...args) {
-  const response = await _originalFetch(...args);
-  const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
-  if (url && url.includes('api.openalex.org')) {
-    const remaining = response.headers.get('x-ratelimit-remaining');
-    if (remaining !== null) {
-      chrome.storage.local.set({ rateLimitData: {
-        limit: parseInt(response.headers.get('x-ratelimit-limit')) || 0,
-        remaining: parseInt(remaining) || 0,
-        reset: response.headers.get('x-ratelimit-reset') || null,
-        lastUpdated: Date.now()
-      }});
-    }
-  }
-  return response;
-};
+// Authenticate OpenAlex requests (key from ane-key.js) and track daily budget.
+ANE.installFetch({
+  onRateLimit: (rateLimitData) => chrome.storage.local.set({ rateLimitData })
+});
 
 // State
 let network = null;
@@ -201,23 +186,38 @@ async function restoreLastNetwork() {
 // Web Worker Initialization
 // ============================================
 
-function initWorker() {
-  if (typeof Worker !== 'undefined') {
-    try {
-      worker = new Worker('network-worker.js');
-      worker.onmessage = function(e) {
-        if (e.data && e.data.type === 'rateLimitUpdate') {
-          chrome.storage.local.set({ rateLimitData: e.data.data });
-        }
-      };
-      worker.onerror = function(e) {
-        console.error('Worker error:', e);
-      };
-    } catch (error) {
-      console.warn('Web Worker not available:', error);
-    }
+async function initWorker() {
+  if (typeof Worker === 'undefined') return;
+  try {
+    const w = new Worker('network-worker.js');
+    w.onmessage = function(e) {
+      if (e.data && e.data.type === 'rateLimitUpdate') {
+        chrome.storage.local.set({ rateLimitData: e.data.data });
+      }
+    };
+    w.onerror = function(e) {
+      console.error('Worker error:', e);
+    };
+
+    // The worker cannot read chrome.storage, so pass the key in. Assign the
+    // shared `worker` only afterwards, so nothing can dispatch an
+    // unauthenticated request through it in the meantime.
+    w.postMessage({ type: 'setApiKey', payload: { key: await ANE.getKey() } });
+    worker = w;
+  } catch (error) {
+    console.warn('Web Worker not available:', error);
   }
 }
+
+// Keep the worker's copy of the key current if it changes in the settings page.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'sync' && changes[ANE.STORAGE_KEY] && worker) {
+    worker.postMessage({
+      type: 'setApiKey',
+      payload: { key: changes[ANE.STORAGE_KEY].newValue || '' }
+    });
+  }
+});
 
 // ============================================
 // Network Visualization
@@ -298,7 +298,7 @@ async function searchAuthors(query) {
 
   try {
     // OpenAlex direct author search
-    const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=${limit}`;
+    const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(query)}&per_page=${limit}`;
 
     const response = await fetch(url);
 
@@ -387,7 +387,7 @@ async function loadAuthorNetwork(authorId) {
     // Get author details if not cached or missing h-index
     let author = authorCache.get(cleanId);
     if (!author || !author.hIndex) {
-      const authorUrl = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+      const authorUrl = `${OPENALEX_BASE}/authors/${cleanId}`;
       const authorResponse = await fetch(authorUrl);
       const authorData = await authorResponse.json();
       author = normalizeAuthor(authorData);
@@ -395,7 +395,7 @@ async function loadAuthorNetwork(authorId) {
     }
 
     // Fetch works by this author
-    const worksUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
+    const worksUrl = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
     const worksResponse = await fetch(worksUrl);
     const worksData = await worksResponse.json();
     const works = worksData.results || [];
@@ -426,7 +426,7 @@ async function loadCombinedAuthorNetwork(authorIds, authorNames) {
   try {
     const paperPromises = authorIds.map(authorId => {
       const cleanId = authorId.replace('https://openalex.org/', '');
-      const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100`;
+      const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=100`;
       return fetch(url).then(r => r.json()).then(d => d.results || []);
     });
 
@@ -961,7 +961,7 @@ async function expandNetwork(authorId) {
 
   try {
     const cleanId = authorId.replace('https://openalex.org/', '');
-    const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=50`;
+    const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=50`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -1064,7 +1064,7 @@ async function selectAuthor(authorId) {
   if (!author || author.paperCount === null) {
     try {
       const cleanId = authorId.replace('https://openalex.org/', '');
-      const url = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+      const url = `${OPENALEX_BASE}/authors/${cleanId}`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -1229,7 +1229,7 @@ function getNetworkAuthorIds() {
 async function fetchCitingWorks(authorId, limit = 50) {
   try {
     // Get works that cite this author's papers
-    const url = `${OPENALEX_BASE}/works?filter=cites:${authorId}&per_page=${limit}&select=id,doi,display_name,publication_year,cited_by_count,authorships,concepts&api_key=${OPENALEX_API_KEY}`;
+    const url = `${OPENALEX_BASE}/works?filter=cites:${authorId}&per_page=${limit}&select=id,doi,display_name,publication_year,cited_by_count,authorships,concepts`;
     const response = await fetch(url);
     if (!response.ok) return [];
 
@@ -1484,7 +1484,7 @@ async function checkAuthorRetractions(authorId) {
     // Coauthor — fetch their papers from API
     try {
       const cleanId = authorId.replace('https://openalex.org/', '');
-      const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
+      const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=100&sort=publication_year:desc`;
       const response = await fetch(url);
       const data = await response.json();
       allPapers = (data.results || []).map(work => normalizeWork(work));
@@ -1554,7 +1554,7 @@ async function loadPapers(authorId) {
     } else {
       // Fetch from OpenAlex for secondary authors
       const cleanId = authorId.replace('https://openalex.org/', '');
-      const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=100&sort=cited_by_count:desc`;
+      const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=100&sort=cited_by_count:desc`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -2015,7 +2015,7 @@ async function searchPapersForCollection(query) {
   resultsContainer.innerHTML = '<div class="paper-search-loading">Searching papers...</div>';
 
   try {
-    const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=20`;
+    const url = `${OPENALEX_BASE}/works?search=${encodeURIComponent(query)}&per_page=20`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -2114,7 +2114,7 @@ async function discoverMissingPapers(collectionId) {
       }
       // Fetch full paper details
       try {
-        const url = `${OPENALEX_BASE}/works/${paper.workId}?api_key=${OPENALEX_API_KEY}`;
+        const url = `${OPENALEX_BASE}/works/${paper.workId}`;
         const response = await fetch(url);
         const data = await response.json();
         return {
@@ -2163,7 +2163,7 @@ async function discoverMissingPapers(collectionId) {
     // Fetch details for suggested papers
     const suggestionIds = topReferences.map(([id]) => id);
     const filterStr = suggestionIds.slice(0, 50).join('|');
-    const suggestUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=ids.openalex:${filterStr}&per_page=50`;
+    const suggestUrl = `${OPENALEX_BASE}/works?filter=ids.openalex:${filterStr}&per_page=50`;
 
     const suggestResponse = await fetch(suggestUrl);
     const suggestData = await suggestResponse.json();
@@ -3411,7 +3411,7 @@ async function viewAuthorInAuthorsTab(authorName) {
   }
   // Search and auto-load the top result
   try {
-    const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(authorName)}&per_page=1`;
+    const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(authorName)}&per_page=1`;
     const response = await fetch(url);
     const data = await response.json();
     const results = data.results || [];
@@ -3754,7 +3754,7 @@ async function searchFields(query) {
   resultsContainer.classList.add('visible');
 
   try {
-    const url = `${OPENALEX_BASE}/concepts?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=15`;
+    const url = `${OPENALEX_BASE}/concepts?search=${encodeURIComponent(query)}&per_page=15`;
     const response = await fetch(url);
     const data = await response.json();
 
@@ -3820,7 +3820,7 @@ async function analyzeField(conceptId) {
     const maxPages = 3; // 600 papers max
 
     for (let page = 1; page <= maxPages; page++) {
-      const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=concepts.id:${cleanId}&per_page=${perPage}&page=${page}&sort=publication_year:desc`;
+      const url = `${OPENALEX_BASE}/works?filter=concepts.id:${cleanId}&per_page=${perPage}&page=${page}&sort=publication_year:desc`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -3932,7 +3932,7 @@ async function findForgottenCorners() {
     const cleanId = selectedField.id.replace('https://openalex.org/', '');
 
     // Get sub-concepts of this field
-    const conceptUrl = `${OPENALEX_BASE}/concepts/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+    const conceptUrl = `${OPENALEX_BASE}/concepts/${cleanId}`;
     const conceptResponse = await fetch(conceptUrl);
     const conceptData = await conceptResponse.json();
 
@@ -3946,7 +3946,7 @@ async function findForgottenCorners() {
     // Analyze each related concept
     const cornerAnalysis = await Promise.all(relatedConcepts.map(async (concept) => {
       try {
-        const worksUrl = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=concepts.id:${concept.id}&per_page=50&sort=publication_year:desc`;
+        const worksUrl = `${OPENALEX_BASE}/works?filter=concepts.id:${concept.id}&per_page=50&sort=publication_year:desc`;
         const worksResponse = await fetch(worksUrl);
         const worksData = await worksResponse.json();
         const works = worksData.results || [];
@@ -4067,7 +4067,7 @@ async function searchPapersInScope(query) {
 
   try {
     const cleanId = currentSearchScope.conceptId.replace('https://openalex.org/', '');
-    const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&filter=concepts.id:${cleanId}&per_page=20`;
+    const url = `${OPENALEX_BASE}/works?search=${encodeURIComponent(query)}&filter=concepts.id:${cleanId}&per_page=20`;
 
     const response = await fetch(url);
     const data = await response.json();
@@ -4441,7 +4441,7 @@ async function searchPathAuthors(query, inputNumber) {
   dropdown.classList.add('visible');
 
   try {
-    const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=8`;
+    const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(query)}&per_page=8`;
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -4533,7 +4533,7 @@ async function getCoauthorsForPath(authorId, visited, nameMatch, retries = 2) {
   const cleanId = authorId.replace('https://openalex.org/', '');
 
   // Fetch recent works by this author (limit to improve performance)
-  const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=30&sort=cited_by_count:desc`;
+  const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=30&sort=cited_by_count:desc`;
 
   let response;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -4828,7 +4828,7 @@ async function enrichPathAuthors(path) {
   const promises = path.map(async (node) => {
     if (!authorCache.has(node.authorId) || !authorCache.get(node.authorId).paperCount) {
       try {
-        const url = `${OPENALEX_BASE}/authors/${node.authorId}?api_key=${OPENALEX_API_KEY}`;
+        const url = `${OPENALEX_BASE}/authors/${node.authorId}`;
         const response = await fetch(url);
         if (response.ok) {
           const data = await response.json();
@@ -5224,7 +5224,7 @@ async function findAuthorByPaper(authorName, paperTitle) {
       .trim();
 
     // Search OpenAlex works by title
-    const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(cleanTitle)}&per_page=10`;
+    const url = `${OPENALEX_BASE}/works?search=${encodeURIComponent(cleanTitle)}&per_page=10`;
     const response = await fetch(url);
 
     if (!response.ok) return null;

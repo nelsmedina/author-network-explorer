@@ -1,21 +1,20 @@
 // OpenAlex API utilities for Author Network Explorer
 
 const OPENALEX_BASE = 'https://api.openalex.org';
-const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
 
 // ============================================
 // API Request Helpers
 // ============================================
 
 /**
- * Build URL with API key parameter
+ * Build an OpenAlex URL. The user's API key is not included here — it is
+ * attached as an Authorization header by the fetch wrapper in ane-key.js.
  * @param {string} endpoint
  * @param {Object} params - Query parameters
  * @returns {string}
  */
 function buildOpenAlexUrl(endpoint, params = {}) {
   const url = new URL(endpoint, OPENALEX_BASE);
-  url.searchParams.set('api_key', OPENALEX_API_KEY);
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== null) {
       url.searchParams.set(key, value);
@@ -447,7 +446,6 @@ if (typeof module !== 'undefined' && module.exports) {
     formatAuthorPosition,
     normalizeAuthor,
     normalizeWork,
-    OPENALEX_BASE,
-    OPENALEX_API_KEY
+    OPENALEX_BASE
   };
 }

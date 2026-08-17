@@ -3,24 +3,44 @@
 // Uses OpenAlex API for author/works data
 
 const OPENALEX_BASE = 'https://api.openalex.org';
-const OPENALEX_API_KEY = 'ygR9tBoWZtDgvAKDkdzcT4';
 
-// Fetch wrapper for API rate limit tracking (posts to main thread since no chrome.storage in workers)
+// Workers have no access to chrome.storage, so the main thread hands the user's
+// API key over by postMessage ('setApiKey') right after creating this worker.
+let apiKey = '';
+
+// Fetch wrapper: attaches the key and posts budget updates back to the main
+// thread (which owns chrome.storage).
 const _originalFetch = fetch;
 fetch = async function(...args) {
-  const response = await _originalFetch(...args);
   const url = typeof args[0] === 'string' ? args[0] : args[0]?.url;
-  if (url && url.includes('api.openalex.org')) {
+  const isOpenAlex = url && url.includes('api.openalex.org');
+
+  if (isOpenAlex && apiKey && typeof args[0] === 'string') {
+    const init = Object.assign({}, args[1]);
+    const headers = new Headers((args[1] && args[1].headers) || {});
+    headers.set('Authorization', `Bearer ${apiKey}`);
+    init.headers = headers;
+    args[1] = init;
+  }
+
+  const response = await _originalFetch(...args);
+
+  if (isOpenAlex) {
     const remaining = response.headers.get('x-ratelimit-remaining');
-    if (remaining !== null) {
+    const remainingUsd = response.headers.get('x-ratelimit-remaining-usd');
+    if (remaining !== null || remainingUsd !== null) {
       self.postMessage({ type: 'rateLimitUpdate', data: {
         limit: parseInt(response.headers.get('x-ratelimit-limit')) || 0,
         remaining: parseInt(remaining) || 0,
+        limitUsd: parseFloat(response.headers.get('x-ratelimit-limit-usd')) || 0,
+        remainingUsd: parseFloat(remainingUsd) || 0,
+        costUsd: parseFloat(response.headers.get('x-ratelimit-cost-usd')) || 0,
         reset: response.headers.get('x-ratelimit-reset') || null,
         lastUpdated: Date.now()
       }});
     }
   }
+
   return response;
 };
 
@@ -30,6 +50,9 @@ self.onmessage = async function(e) {
 
   try {
     switch (type) {
+      case 'setApiKey':
+        apiKey = payload && payload.key ? payload.key : '';
+        return;
       case 'fetchAuthorWorks':
         const works = await fetchAuthorWorks(payload.authorId, payload.limit, payload.positionFilter);
         self.postMessage({ type: 'result', id, success: true, data: works });
@@ -85,7 +108,7 @@ self.onmessage = async function(e) {
  */
 async function fetchAuthorWorks(authorId, limit = 100, positionFilter = null) {
   const cleanId = authorId.replace('https://openalex.org/', '');
-  const url = `${OPENALEX_BASE}/works?api_key=${OPENALEX_API_KEY}&filter=author.id:${cleanId}&per_page=${limit}&sort=publication_year:desc`;
+  const url = `${OPENALEX_BASE}/works?filter=author.id:${cleanId}&per_page=${limit}&sort=publication_year:desc`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -106,7 +129,7 @@ async function fetchAuthorWorks(authorId, limit = 100, positionFilter = null) {
  */
 async function getAuthorDetails(authorId) {
   const cleanId = authorId.replace('https://openalex.org/', '');
-  const url = `${OPENALEX_BASE}/authors/${cleanId}?api_key=${OPENALEX_API_KEY}`;
+  const url = `${OPENALEX_BASE}/authors/${cleanId}`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -124,7 +147,7 @@ async function getAuthorDetails(authorId) {
  * @returns {Promise<Array>} Array of author objects
  */
 async function searchAuthors(query, limit = 25) {
-  const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&search=${encodeURIComponent(query)}&per_page=${limit}`;
+  const url = `${OPENALEX_BASE}/authors?search=${encodeURIComponent(query)}&per_page=${limit}`;
 
   const response = await fetch(url);
   if (!response.ok) {
@@ -147,7 +170,7 @@ async function batchGetAuthors(authorIds) {
   const cleanIds = authorIds.slice(0, 50).map(id => id.replace('https://openalex.org/', ''));
   const filterStr = cleanIds.join('|');
 
-  const url = `${OPENALEX_BASE}/authors?api_key=${OPENALEX_API_KEY}&filter=ids.openalex:${filterStr}&per_page=50`;
+  const url = `${OPENALEX_BASE}/authors?filter=ids.openalex:${filterStr}&per_page=50`;
 
   const response = await fetch(url);
   if (!response.ok) {
