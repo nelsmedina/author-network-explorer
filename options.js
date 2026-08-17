@@ -30,9 +30,13 @@ function typedKey() {
   return value === MASK ? '' : value;
 }
 
+// Reported as a percentage rather than in dollars: a free key is never billed,
+// so the share of the daily allowance left is the useful number.
 function describeBudget(rateLimit) {
   if (!rateLimit || !rateLimit.limitUsd) return '';
-  return ` Daily budget remaining: $${rateLimit.remainingUsd.toFixed(2)} of $${rateLimit.limitUsd.toFixed(2)}.`;
+  const pct = Math.max(0, Math.min(100, (rateLimit.remainingUsd / rateLimit.limitUsd) * 100));
+  const shown = pct === 0 ? '0%' : pct < 1 ? 'under 1%' : `${Math.round(pct)}%`;
+  return ` Daily allowance remaining: ${shown}.`;
 }
 
 async function render() {

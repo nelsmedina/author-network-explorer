@@ -10,7 +10,11 @@ const OPENALEX_BASE = 'https://api.openalex.org';
 ANE.installFetch({
   onRateLimit: (rateLimitData) => {
     chrome.storage.local.set({ rateLimitData });
-    if (rateLimitData.remaining <= 0) {
+    // Either counter can hit zero first: OpenAlex meters a USD budget, so the
+    // request count can still look healthy while the budget is spent.
+    const usdSpent = rateLimitData.limitUsd > 0 && rateLimitData.remainingUsd <= 0;
+    const callsSpent = rateLimitData.limit > 0 && rateLimitData.remaining <= 0;
+    if (usdSpent || callsSpent) {
       notifyUserLimitReached(rateLimitData);
     }
   }
@@ -18,7 +22,20 @@ ANE.installFetch({
 const ALARM_NAME = 'checkFavorites';
 const CHECK_INTERVAL_MINUTES = 60 * 24; // Once per day
 
-// Notify the user with a Chrome notification when API limit is reached
+/**
+ * OpenAlex reports its reset as seconds remaining, not a timestamp, so render it
+ * as a human interval rather than printing the raw number.
+ */
+function describeReset(reset) {
+  const seconds = parseInt(reset, 10);
+  if (!Number.isFinite(seconds) || seconds <= 0) return 'It resets at midnight UTC.';
+  const hours = Math.round(seconds / 3600);
+  if (hours >= 2) return `It resets in about ${hours} hours.`;
+  const minutes = Math.max(1, Math.round(seconds / 60));
+  return `It resets in about ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+}
+
+// Notify the user with a Chrome notification when the daily budget runs out.
 function notifyUserLimitReached(rateLimitData) {
   chrome.storage.local.get(['lastUserLimitNotification'], (result) => {
     const lastNotified = result.lastUserLimitNotification || 0;
@@ -27,7 +44,7 @@ function notifyUserLimitReached(rateLimitData) {
       type: 'basic',
       iconUrl: 'icons/ane-icon.svg',
       title: 'Author Network Explorer',
-      message: `Daily API limit reached (${rateLimitData.limit} calls). Data will refresh ${rateLimitData.reset ? 'at ' + rateLimitData.reset : 'tomorrow'}.`
+      message: `Your daily OpenAlex budget is used up. ${describeReset(rateLimitData.reset)}`
     });
     chrome.storage.local.set({ lastUserLimitNotification: Date.now() });
   });

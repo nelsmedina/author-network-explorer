@@ -57,6 +57,13 @@
       font-weight: 400;
       letter-spacing: 0.5px;
     }
+    /* Daily OpenAlex budget readout; colour is set from script. */
+    .budget-readout {
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
+      letter-spacing: 0.2px;
+    }
     .search-box {
       display: flex;
       gap: 8px;
@@ -1838,6 +1845,7 @@
           <img src="icons/logo-bird.png" alt="ANE Logo" class="logo-icon">
         </div>
         <span class="logo-subtitle">Author Network Explorer</span>
+        <span class="budget-readout" id="aneBudget"></span>
       </div>
     </div>
     <div class="search-box" id="singleSearchBox">
@@ -2174,5 +2182,6 @@
   <script src="ane-key.js"></script>
   <script src="fullpage.js"></script>
   <script src="ane-setup-gate.js"></script>
+  <script src="ane-budget.js"></script>
 </body>
 </html>

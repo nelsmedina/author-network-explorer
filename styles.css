@@ -569,3 +569,11 @@ h1 {
 ::-webkit-scrollbar-thumb:hover {
   background: #444;
 }
+
+/* Daily OpenAlex budget readout; colour is set from script. */
+.budget-readout {
+  font-size: 10px;
+  color: #888;
+  margin-top: 2px;
+  letter-spacing: 0.2px;
+}
